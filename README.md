@@ -8,3 +8,6 @@ A simple app for tracking your time.
 
 ## Getting started
 Coming soon!
+
+## About
+Built with Claude Code.
