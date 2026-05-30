@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Time Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 30px;
+      color: #1a1a2e;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 18px;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Timer section */
+    .task-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    select, input[type="text"], input[type="date"] {
+      padding: 10px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    select:focus, input:focus {
+      border-color: #6c63ff;
+    }
+
+    select { flex: 1; min-width: 180px; }
+
+    .add-task-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .add-task-row input { flex: 1; }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+
+    .btn-add {
+      background: #e8e6ff;
+      color: #6c63ff;
+      font-weight: 600;
+    }
+
+    .btn-add:hover { background: #d4d0ff; }
+
+    .timer-display {
+      text-align: center;
+      font-size: 3.5rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #1a1a2e;
+      margin: 10px 0 20px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .time-entry-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .time-entry-row label {
+      font-size: 0.9rem;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    input[type="time"], input[type="date"] {
+      padding: 10px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    input[type="time"]:focus, input[type="date"]:focus {
+      border-color: #6c63ff;
+    }
+
+    .btn-log {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 12px;
+      background: #6c63ff;
+      color: white;
+      margin-top: 16px;
+    }
+
+    .btn-log:hover { background: #5a52e0; }
+
+    /* Summary */
+    .summary-filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .summary-filters label {
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .btn-filter {
+      background: #6c63ff;
+      color: white;
+      font-weight: 600;
+    }
+
+    .btn-filter:hover { background: #5a52e0; }
+
+    .chart-container {
+      position: relative;
+      height: 260px;
+      margin-bottom: 24px;
+    }
+
+    .session-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .session-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #f8f8ff;
+      border-radius: 10px;
+      border-left: 4px solid #6c63ff;
+    }
+
+    .session-item .task-name {
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .session-item .session-time {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .session-item .session-note {
+      font-size: 0.85rem;
+      color: #6c63ff;
+      margin-top: 4px;
+      font-style: italic;
+    }
+
+    .session-item .duration {
+      font-weight: 700;
+      color: #6c63ff;
+      white-space: nowrap;
+    }
+
+    .session-item .item-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .btn-edit {
+      background: none;
+      border: 1.5px solid #ddd;
+      color: #888;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      border-radius: 6px;
+    }
+
+    .btn-edit:hover { border-color: #6c63ff; color: #6c63ff; background: #f0eeff; }
+
+    .btn-delete {
+      background: none;
+      border: 1.5px solid #ddd;
+      color: #bbb;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      border-radius: 6px;
+    }
+
+    .btn-delete:hover { border-color: #ff4757; color: #ff4757; background: #fff0f1; }
+
+    /* Edit modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+
+    .modal h3 {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+      color: #1a1a2e;
+    }
+
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 14px;
+    }
+
+    .modal-field label {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: 600;
+    }
+
+    .modal-field select,
+    .modal-field input {
+      width: 100%;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-save {
+      flex: 1;
+      background: #6c63ff;
+      color: white;
+      font-weight: 700;
+    }
+
+    .btn-save:hover { background: #5a52e0; }
+
+    .btn-cancel {
+      flex: 1;
+      background: #f0f2f5;
+      color: #555;
+      font-weight: 600;
+    }
+
+    .btn-cancel:hover { background: #e2e4e8; }
+
+    .no-data {
+      text-align: center;
+      color: #aaa;
+      padding: 30px;
+      font-size: 1rem;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      padding: 12px 4px 4px;
+      border-top: 2px solid #eee;
+      margin-top: 10px;
+      color: #1a1a2e;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Time Tracker</h1>
+
+<div class="container">
+
+  <!-- Timer Card -->
+  <div class="card">
+    <h2>Track Time</h2>
+
+    <div class="add-task-row">
+      <input type="text" id="newTaskInput" placeholder="Add a new task type..." />
+      <button class="btn-add" onclick="addTask()">+ Add</button>
+    </div>
+
+    <div class="task-row">
+      <select id="taskSelect">
+        <option value="">-- Select a task --</option>
+      </select>
+    </div>
+
+    <div class="time-entry-row">
+      <label>Date</label>
+      <input type="date" id="entryDate" />
+      <label>Start</label>
+      <input type="time" id="entryStart" />
+      <label>End</label>
+      <input type="time" id="entryEnd" />
+    </div>
+
+    <div class="time-entry-row" style="margin-top:10px;">
+      <label>Note</label>
+      <input type="text" id="entryNote" placeholder="Optional note..." style="flex:1;" />
+    </div>
+
+    <button class="btn-log" onclick="logEntry()">Log Time</button>
+  </div>
+
+  <!-- Summary Card -->
+  <div class="card">
+    <h2>Summary</h2>
+
+    <div class="summary-filters">
+      <label>From</label>
+      <input type="date" id="filterFrom" />
+      <label>To</label>
+      <input type="date" id="filterTo" />
+      <select id="filterTask">
+        <option value="">All tasks</option>
+      </select>
+      <button class="btn-filter" onclick="renderSummary()">Filter</button>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="timeChart"></canvas>
+    </div>
+
+    <div class="session-list" id="sessionList"></div>
+    <div class="total-row" id="totalRow" style="display:none">
+      <span>Total</span><span id="totalTime"></span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>Edit Entry</h3>
+    <div class="modal-field">
+      <label>Task</label>
+      <select id="editTask"></select>
+    </div>
+    <div class="modal-field">
+      <label>Date</label>
+      <input type="date" id="editDate" />
+    </div>
+    <div class="modal-field">
+      <label>Start Time</label>
+      <input type="time" id="editStart" />
+    </div>
+    <div class="modal-field">
+      <label>End Time</label>
+      <input type="time" id="editEnd" />
+    </div>
+    <div class="modal-field">
+      <label>Note</label>
+      <input type="text" id="editNote" placeholder="Optional note..." />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Data ──────────────────────────────────────────────
+  let tasks = JSON.parse(localStorage.getItem('tt_tasks') || '["Admin","Client Work","Meetings","Research","Other"]');
+  let sessions = JSON.parse(localStorage.getItem('tt_sessions') || '[]');
+
+  let chart = null;
+
+  // ── Init ──────────────────────────────────────────────
+  function init() {
+    renderTaskOptions();
+    setDefaultDates();
+    setTodayOnEntry();
+    renderSummary();
+  }
+
+  function setTodayOnEntry() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('entryDate').value = today;
+  }
+
+  function save() {
+    localStorage.setItem('tt_tasks', JSON.stringify(tasks));
+    localStorage.setItem('tt_sessions', JSON.stringify(sessions));
+  }
+
+  // ── Tasks ─────────────────────────────────────────────
+  function renderTaskOptions() {
+    const sel = document.getElementById('taskSelect');
+    const filterSel = document.getElementById('filterTask');
+    const current = sel.value;
+
+    sel.innerHTML = '<option value="">-- Select a task --</option>';
+    filterSel.innerHTML = '<option value="">All tasks</option>';
+
+    tasks.forEach(t => {
+      sel.innerHTML += `<option value="${t}">${t}</option>`;
+      filterSel.innerHTML += `<option value="${t}">${t}</option>`;
+    });
+
+    sel.value = current;
+  }
+
+  function addTask() {
+    const input = document.getElementById('newTaskInput');
+    const name = input.value.trim();
+    if (!name) return;
+    if (tasks.includes(name)) { input.value = ''; return; }
+    tasks.push(name);
+    save();
+    renderTaskOptions();
+    document.getElementById('taskSelect').value = name;
+    input.value = '';
+  }
+
+  document.getElementById('newTaskInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  // ── Manual Entry ──────────────────────────────────────
+  function logEntry() {
+    const task = document.getElementById('taskSelect').value;
+    const date = document.getElementById('entryDate').value;
+    const startVal = document.getElementById('entryStart').value;
+    const endVal = document.getElementById('entryEnd').value;
+
+    if (!task) { alert('Please select a task.'); return; }
+    if (!date) { alert('Please enter a date.'); return; }
+    if (!startVal) { alert('Please enter a start time.'); return; }
+    if (!endVal) { alert('Please enter an end time.'); return; }
+
+    const startTime = new Date(`${date}T${startVal}`);
+    const endTime = new Date(`${date}T${endVal}`);
+
+    if (endTime <= startTime) {
+      alert('End time must be after start time.');
+      return;
+    }
+
+    const duration = Math.floor((endTime - startTime) / 1000);
+    const note = document.getElementById('entryNote').value.trim();
+
+    sessions.push({
+      task,
+      start: startTime.toISOString(),
+      end: endTime.toISOString(),
+      duration,
+      note
+    });
+
+    save();
+    renderSummary();
+
+    // Clear time and note fields but keep date and task for quick re-entry
+    document.getElementById('entryStart').value = '';
+    document.getElementById('entryEnd').value = '';
+    document.getElementById('entryNote').value = '';
+  }
+
+  // ── Summary ───────────────────────────────────────────
+  function setDefaultDates() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('filterFrom').value = today;
+    document.getElementById('filterTo').value = today;
+  }
+
+  function renderSummary() {
+    const from = document.getElementById('filterFrom').value;
+    const to = document.getElementById('filterTo').value;
+    const taskFilter = document.getElementById('filterTask').value;
+
+    let filtered = sessions.filter(s => {
+      const date = s.start.split('T')[0];
+      return (!from || date >= from) && (!to || date <= to) && (!taskFilter || s.task === taskFilter);
+    });
+
+    filtered.sort((a, b) => new Date(b.start) - new Date(a.start));
+
+    renderChart(filtered);
+    renderList(filtered);
+  }
+
+  function renderChart(filtered) {
+    const totals = {};
+    filtered.forEach(s => {
+      totals[s.task] = (totals[s.task] || 0) + s.duration;
+    });
+
+    const labels = Object.keys(totals);
+    const data = labels.map(l => +(totals[l] / 3600).toFixed(2));
+
+    const colors = ['#6c63ff','#ff6584','#43c6ac','#f7971e','#2193b0','#cc2b5e'];
+
+    if (chart) chart.destroy();
+
+    const ctx = document.getElementById('timeChart').getContext('2d');
+
+    if (labels.length === 0) {
+      chart = null;
+      return;
+    }
+
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Hours',
+          data,
+          backgroundColor: labels.map((_, i) => colors[i % colors.length]),
+          borderRadius: 8,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' ' + formatDuration(Math.round(ctx.raw * 3600))
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: v => v + 'h'
+            },
+            grid: { color: '#f0f0f0' }
+          },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderList(filtered) {
+    const list = document.getElementById('sessionList');
+    const totalRow = document.getElementById('totalRow');
+    const totalEl = document.getElementById('totalTime');
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="no-data">No sessions found for this filter.</div>';
+      totalRow.style.display = 'none';
+      return;
+    }
+
+    list.innerHTML = filtered.map(s => {
+      const realIdx = sessions.indexOf(s);
+      const start = new Date(s.start);
+      const end = new Date(s.end);
+      const dateStr = start.toLocaleDateString();
+      const timeStr = start.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
+                      ' – ' + end.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      return `
+        <div class="session-item">
+          <div>
+            <div class="task-name">${s.task}</div>
+            <div class="session-time">${dateStr} &nbsp;${timeStr}</div>
+            ${s.note ? `<div class="session-note">${s.note}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <span class="duration">${formatDuration(s.duration)}</span>
+            <button class="btn-edit" onclick="openEdit(${realIdx})">Edit</button>
+            <button class="btn-delete" onclick="deleteEntry(${realIdx})">Delete</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    const total = filtered.reduce((sum, s) => sum + s.duration, 0);
+    totalEl.textContent = formatDuration(total);
+    totalRow.style.display = 'flex';
+  }
+
+  // ── Edit / Delete ─────────────────────────────────────
+  let editingIndex = null;
+
+  function openEdit(idx) {
+    editingIndex = idx;
+    const s = sessions[idx];
+    const start = new Date(s.start);
+    const end = new Date(s.end);
+
+    // Populate task dropdown in modal
+    const sel = document.getElementById('editTask');
+    sel.innerHTML = '';
+    tasks.forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
+    sel.value = s.task;
+
+    document.getElementById('editDate').value = start.toISOString().split('T')[0];
+    document.getElementById('editStart').value = start.toTimeString().slice(0,5);
+    document.getElementById('editEnd').value = end.toTimeString().slice(0,5);
+    document.getElementById('editNote').value = s.note || '';
+
+    document.getElementById('editModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('editModal').classList.remove('open');
+    editingIndex = null;
+  }
+
+  function saveEdit() {
+    const task = document.getElementById('editTask').value;
+    const date = document.getElementById('editDate').value;
+    const startVal = document.getElementById('editStart').value;
+    const endVal = document.getElementById('editEnd').value;
+    const note = document.getElementById('editNote').value.trim();
+
+    const startTime = new Date(`${date}T${startVal}`);
+    const endTime = new Date(`${date}T${endVal}`);
+
+    if (endTime <= startTime) { alert('End time must be after start time.'); return; }
+
+    sessions[editingIndex] = {
+      task,
+      start: startTime.toISOString(),
+      end: endTime.toISOString(),
+      duration: Math.floor((endTime - startTime) / 1000),
+      note
+    };
+
+    save();
+    renderSummary();
+    closeModal();
+  }
+
+  function deleteEntry(idx) {
+    if (!confirm('Delete this entry?')) return;
+    sessions.splice(idx, 1);
+    save();
+    renderSummary();
+  }
+
+  // Close modal if clicking outside
+  document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // ── Helpers ───────────────────────────────────────────
+  function formatDuration(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+  }
+
+  init();
+</script>
+</body>
+</html>
