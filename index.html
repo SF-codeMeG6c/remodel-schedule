@@ -541,7 +541,7 @@
     const taskFilter = document.getElementById('filterTask').value;
 
     let filtered = sessions.filter(s => {
-      const date = s.start.split('T')[0];
+      const date = localDateStr(new Date(s.start));
       return (!from || date >= from) && (!to || date <= to) && (!taskFilter || s.task === taskFilter);
     });
 
@@ -712,6 +712,12 @@
   });
 
   // ── Helpers ───────────────────────────────────────────
+  function localDateStr(d) {
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
   function formatDuration(seconds) {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
