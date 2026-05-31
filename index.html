@@ -1,731 +1,1187 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Time Tracker</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remodel Schedule</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f2f5;
-      color: #1a1a2e;
-      min-height: 100vh;
-      padding: 30px 20px;
-    }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f0f2f5;
+  color: #1a1a1a;
+  padding: 20px;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
 
-    h1 {
-      text-align: center;
-      font-size: 2rem;
-      margin-bottom: 30px;
-      color: #1a1a2e;
-    }
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-left h1 { font-size: 1.4rem; font-weight: 700; }
+.header-left p  { font-size: 0.82rem; color: #666; margin-top: 2px; }
+.header-right   { display: flex; gap: 8px; align-items: center; }
 
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
+#customerWrap {
+  background: #fff; border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 6px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 200px;
+}
+.cw-top { display: flex; align-items: center; gap: 8px; }
+.cw-top label { font-size: 0.7rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+#customerSelect { border: none; outline: none; font-size: 0.9rem; font-weight: 600; color: #1e3a5f; background: transparent; cursor: pointer; flex: 1; }
+#customerAddress { font-size: 0.75rem; color: #888; padding-left: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#manageCustomersBtn { background: none; border: none; cursor: pointer; font-size: 0.72rem; color: #2563eb; font-weight: 600; padding: 0; white-space: nowrap; }
 
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    }
+/* ── Buttons ── */
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
+.btn-blue  { background: #2563eb; color: #fff; }
+.btn-green { background: #16a34a; color: #fff; }
+.btn-gray  { background: #e5e7eb; color: #374151; }
+.btn-red   { background: #dc2626; color: #fff; }
+.btn-amber { background: #d97706; color: #fff; }
+.btn:hover { filter: brightness(1.08); }
 
-    .card h2 {
-      font-size: 1.1rem;
-      margin-bottom: 18px;
-      color: #444;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+/* ── Add-trade panel ── */
+#addPanel {
+  background: #fff; border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.10);
+  padding: 16px 20px; margin-bottom: 20px;
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+}
+#addPanel.hidden { display: none; }
 
-    /* Timer section */
-    .task-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 0.75rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .04em; }
+.field select, .field input[type=date], .field input[type=text] {
+  padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 0.875rem; background: #fff; color: #1a1a1a; outline: none;
+}
+.field select:focus, .field input:focus { border-color: #2563eb; }
 
-    select, input[type="text"], input[type="date"] {
-      padding: 10px 14px;
-      border: 1.5px solid #ddd;
-      border-radius: 8px;
-      font-size: 1rem;
-      outline: none;
-      transition: border 0.2s;
-    }
+.trade-field-wrap { display: flex; flex-direction: column; gap: 4px; }
+.trade-field-wrap label { font-size: 0.75rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .04em; }
+.trade-select-row { display: flex; align-items: center; gap: 6px; }
+.trade-select-row select { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: #fff; color: #1a1a1a; outline: none; }
+.trade-select-row select:focus { border-color: #2563eb; }
+.manage-trades-btn { background: none; border: none; cursor: pointer; font-size: 0.72rem; color: #2563eb; font-weight: 600; white-space: nowrap; }
 
-    select:focus, input:focus {
-      border-color: #6c63ff;
-    }
+/* ── Calendar ── */
+.calendar { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.10); overflow: hidden; }
+.week-block { border-bottom: 2px solid #e5e7eb; }
+.week-block:last-child { border-bottom: none; }
 
-    select { flex: 1; min-width: 180px; }
+.week-header {
+  display: grid; grid-template-columns: 80px repeat(7, 1fr);
+  background: #166534; color: #fff;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.week-label {
+  padding: 7px 10px; font-size: 0.72rem; font-weight: 700;
+  display: flex; align-items: center;
+  border-right: 1px solid rgba(255,255,255,.15);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.day-hdr { padding: 5px 4px; text-align: center; font-size: 0.7rem; border-right: 1px solid rgba(255,255,255,.10); }
+.day-hdr .dow  { font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.day-hdr .date { font-size: 0.82rem; margin-top: 1px; }
+.day-hdr.today   { background: rgba(255,255,255,.18); }
+.day-hdr.weekend { opacity: .6; }
 
-    .add-task-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
+.week-body { display: grid; grid-template-columns: 80px repeat(7, 1fr); position: relative; }
+.row-label { border-right: 1px solid #e5e7eb; background: #f8f9fb; }
+.day-cell  { border-right: 1px solid #e5e7eb; min-height: 56px; }
+.day-cell.weekend { background: #f8f9fb; }
+.day-cell.today   { background: #eff6ff; }
 
-    .add-task-row input { flex: 1; }
+.bars-overlay { position: absolute; top: 0; bottom: 0; left: 80px; right: 0; pointer-events: none; }
 
-    button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-    }
+.trade-bar {
+  position: absolute; height: 28px; border-radius: 5px;
+  display: flex; align-items: center; padding: 0 10px;
+  font-size: 0.85rem; font-weight: 700; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  pointer-events: auto; cursor: pointer; transition: filter .15s;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.trade-bar:hover { filter: brightness(1.12); }
+.trade-bar .note { font-weight: 700; opacity: .90; margin-left: 6px; font-size: 0.75rem; }
 
-    button:active { transform: scale(0.97); }
+/* ── Legend ── */
+.legend { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #444; }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 
-    .btn-add {
-      background: #e8e6ff;
-      color: #6c63ff;
-      font-weight: 600;
-    }
+/* ── Modals ── */
+.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; }
+.modal-backdrop.show { display: flex; }
+.modal-box { background: #fff; border-radius: 10px; padding: 24px 28px; width: 440px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+.modal-box h3 { font-size: 1rem; margin-bottom: 16px; color: #1e3a5f; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.modal-grid .field.full { grid-column: 1 / -1; }
+.modal-actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 4px; }
 
-    .btn-add:hover { background: #d4d0ff; }
+.item-list { list-style: none; margin-bottom: 14px; max-height: 220px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; }
+.item-list li { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.875rem; }
+.item-list li:last-child { border-bottom: none; }
+.item-list li .item-sub { font-size: 0.75rem; color: #888; margin-top: 1px; }
+.item-list li .item-info { display: flex; flex-direction: column; }
+.item-list li button { background: none; border: none; color: #dc2626; cursor: pointer; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; }
+.add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.add-row input { flex: 1; min-width: 120px; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; outline: none; }
+.add-row input:focus { border-color: #2563eb; }
 
-    .timer-display {
-      text-align: center;
-      font-size: 3.5rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      color: #1a1a2e;
-      margin: 10px 0 20px;
-      font-variant-numeric: tabular-nums;
-    }
+/* ── Version history modal ── */
+.version-list { list-style: none; max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 14px; }
+.version-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f0f0f0; }
+.version-list li:last-child { border-bottom: none; }
+.version-list li .v-meta { font-size: 0.8rem; color: #888; margin-top: 2px; }
+.version-list li .v-info { display: flex; flex-direction: column; }
+.version-list li .v-actions { display: flex; gap: 6px; }
 
-    .time-entry-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
+/* ── Job notes ── */
+#notesSection {
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.10);
+  padding: 16px 20px; margin-top: 20px;
+}
+#notesSection h2 {
+  font-size: 0.85rem; font-weight: 700; color: #555;
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px;
+}
+#notesHeader {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+#jobNotesArea {
+  width: 100%; min-height: 80px;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  padding: 12px 14px; font-size: 1.05rem; font-family: inherit;
+  color: #1a1a1a; resize: none; outline: none; line-height: 1.65;
+  overflow: hidden; display: block;
+}
+#jobNotesArea:focus { border-color: #2563eb; }
+.notes-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px; font-size: 0.75rem; color: #aaa;
+}
 
-    .time-entry-row label {
-      font-size: 0.9rem;
-      color: #666;
-      white-space: nowrap;
-    }
+/* mic button */
+#micBtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border: none; border-radius: 6px;
+  background: #e5e7eb; color: #374151;
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+#micBtn:hover { background: #d1d5db; }
 
-    input[type="time"], input[type="date"] {
-      padding: 10px 14px;
-      border: 1.5px solid #ddd;
-      border-radius: 8px;
-      font-size: 1rem;
-      outline: none;
-      transition: border 0.2s;
-    }
+/* inline mic button for trade notes inputs */
+.inline-mic {
+  padding: 6px 9px; border: 1px solid #d1d5db; border-radius: 6px;
+  background: #f9fafb; cursor: pointer; font-size: 0.85rem; line-height: 1;
+  transition: background .15s; flex-shrink: 0;
+}
+.inline-mic:hover { background: #e5e7eb; }
+.inline-mic.listening { background: #dc2626; border-color: #dc2626; animation: pulse 1s infinite; }
+.notes-input-row { display: flex; gap: 6px; align-items: center; }
+#jobNotesPrint { display: none; }
+#micBtn.listening { background: #dc2626; color: #fff; animation: pulse 1s infinite; }
+#micBtn.listening:hover { background: #b91c1c; }
+#micBtn .mic-icon { font-size: 1rem; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 
-    input[type="time"]:focus, input[type="date"]:focus {
-      border-color: #6c63ff;
-    }
+/* ── Color palette popup ── */
+#colorPalette {
+  display: none; position: fixed; z-index: 500;
+  background: #fff; border: 1px solid #d1d5db; border-radius: 10px;
+  padding: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.18); width: 192px;
+}
+#colorPalette .palette-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
+#colorPalette .pc { width: 20px; height: 20px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: transform .1s, border-color .1s; }
+#colorPalette .pc:hover { transform: scale(1.2); border-color: #333; }
+#colorPalette .pc.selected { border-color: #000; transform: scale(1.15); }
 
-    .btn-log {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      font-size: 1.1rem;
-      font-weight: 700;
-      border-radius: 12px;
-      background: #6c63ff;
-      color: white;
-      margin-top: 16px;
-    }
+/* ── Toast ── */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e3a5f; color: #fff; padding: 10px 22px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; }
+#toast.show { opacity: 1; }
 
-    .btn-log:hover { background: #5a52e0; }
+/* ── Responsive / iPad ── */
+@media (max-width: 900px) {
+  body { padding: 12px; }
 
-    /* Summary */
-    .summary-filters {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
+  /* header stacks vertically */
+  header { flex-direction: column; align-items: stretch; gap: 10px; }
+  .header-left { flex-wrap: wrap; gap: 10px; }
+  .header-right { flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+  .btn { padding: 10px 14px; font-size: 0.85rem; }
 
-    .summary-filters label {
-      font-size: 0.9rem;
-      color: #666;
-    }
+  /* customer wrap full width */
+  #customerWrap { min-width: unset; width: 100%; }
 
-    .btn-filter {
-      background: #6c63ff;
-      color: white;
-      font-weight: 600;
-    }
+  /* add panel stacks */
+  #addPanel { flex-direction: column; align-items: stretch; }
+  #addPanel .field, #addPanel .trade-field-wrap { width: 100%; }
+  #addPanel .field input, #addPanel .trade-field-wrap select,
+  #addPanel .field select { width: 100%; font-size: 1rem; padding: 10px 12px; }
+  #addPanel .btn { width: 100%; padding: 12px; font-size: 1rem; }
 
-    .btn-filter:hover { background: #5a52e0; }
+  /* calendar — shrink label column, bigger tap targets */
+  .week-header { grid-template-columns: 54px repeat(7, 1fr); }
+  .week-body   { grid-template-columns: 54px repeat(7, 1fr); }
+  .bars-overlay { left: 54px; }
+  .week-label { padding: 5px 4px; font-size: 0.62rem; }
+  .day-hdr { padding: 4px 2px; font-size: 0.62rem; }
+  .day-hdr .date { font-size: 0.72rem; }
+  .day-cell { min-height: 48px; }
+  .trade-bar { height: 30px; font-size: 0.78rem; padding: 0 6px; }
+  .trade-bar .note { font-size: 0.68rem; }
 
-    .chart-container {
-      position: relative;
-      height: 260px;
-      margin-bottom: 24px;
-    }
+  /* modals full width on small screens */
+  .modal-box { padding: 18px 16px; }
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-grid .field.full { grid-column: 1; }
 
-    .session-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
+  /* notes */
+  #jobNotesArea { font-size: 1rem; }
+  #micBtn { width: 100%; justify-content: center; }
+}
 
-    .session-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
-      background: #f8f8ff;
-      border-radius: 10px;
-      border-left: 4px solid #6c63ff;
-    }
-
-    .session-item .task-name {
-      font-weight: 600;
-      color: #1a1a2e;
-    }
-
-    .session-item .session-time {
-      font-size: 0.85rem;
-      color: #888;
-      margin-top: 2px;
-    }
-
-    .session-item .session-note {
-      font-size: 0.85rem;
-      color: #6c63ff;
-      margin-top: 4px;
-      font-style: italic;
-    }
-
-    .session-item .duration {
-      font-weight: 700;
-      color: #6c63ff;
-      white-space: nowrap;
-    }
-
-    .session-item .item-actions {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 6px;
-    }
-
-    .btn-edit {
-      background: none;
-      border: 1.5px solid #ddd;
-      color: #888;
-      padding: 4px 10px;
-      font-size: 0.78rem;
-      border-radius: 6px;
-    }
-
-    .btn-edit:hover { border-color: #6c63ff; color: #6c63ff; background: #f0eeff; }
-
-    .btn-delete {
-      background: none;
-      border: 1.5px solid #ddd;
-      color: #bbb;
-      padding: 4px 10px;
-      font-size: 0.78rem;
-      border-radius: 6px;
-    }
-
-    .btn-delete:hover { border-color: #ff4757; color: #ff4757; background: #fff0f1; }
-
-    /* Edit modal */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      z-index: 100;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-overlay.open { display: flex; }
-
-    .modal {
-      background: white;
-      border-radius: 16px;
-      padding: 28px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-    }
-
-    .modal h3 {
-      font-size: 1.1rem;
-      margin-bottom: 20px;
-      color: #1a1a2e;
-    }
-
-    .modal-field {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      margin-bottom: 14px;
-    }
-
-    .modal-field label {
-      font-size: 0.85rem;
-      color: #666;
-      font-weight: 600;
-    }
-
-    .modal-field select,
-    .modal-field input {
-      width: 100%;
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .btn-save {
-      flex: 1;
-      background: #6c63ff;
-      color: white;
-      font-weight: 700;
-    }
-
-    .btn-save:hover { background: #5a52e0; }
-
-    .btn-cancel {
-      flex: 1;
-      background: #f0f2f5;
-      color: #555;
-      font-weight: 600;
-    }
-
-    .btn-cancel:hover { background: #e2e4e8; }
-
-    .no-data {
-      text-align: center;
-      color: #aaa;
-      padding: 30px;
-      font-size: 1rem;
-    }
-
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      font-weight: 700;
-      padding: 12px 4px 4px;
-      border-top: 2px solid #eee;
-      margin-top: 10px;
-      color: #1a1a2e;
-    }
-  </style>
+/* ── Print ── */
+@page { size: landscape; margin: 12mm; }
+@media print {
+  body { background: #fff; padding: 0; min-width: unset; }
+  #addPanel, .header-right, #manageCustomersBtn, #toast, .modal-backdrop { display: none !important; }
+  #customerWrap { border: none; padding: 0 0 4px; background: transparent; }
+  .calendar { box-shadow: none; border: 1px solid #ccc; }
+  .week-block { page-break-inside: avoid; }
+  .legend { margin-top: 12px; }
+  .week-header { background: #166534 !important; color: #fff !important; }
+  .trade-bar { color: #fff !important; }
+  #customerSelect { font-weight: 800 !important; font-size: 1.05rem !important; }
+  #customerAddress { font-weight: 700 !important; color: #333 !important; font-size: 0.88rem !important; }
+  #dateRange { font-weight: 700 !important; color: #222 !important; font-size: 0.9rem !important; }
+  #notesSection { box-shadow: none; border: 1px solid #ccc; margin-top: 14px; page-break-inside: auto; }
+  .notes-footer { display: none; }
+  #jobNotesArea { display: none !important; }
+  #jobNotesPrint {
+    display: block !important;
+    font-size: 1.05rem; line-height: 1.65;
+    white-space: pre-wrap; word-break: break-word;
+    color: #1a1a1a;
+  }
+}
+</style>
 </head>
 <body>
 
-<h1>Time Tracker</h1>
-
-<div class="container">
-
-  <!-- Timer Card -->
-  <div class="card">
-    <h2>Track Time</h2>
-
-    <div class="add-task-row">
-      <input type="text" id="newTaskInput" placeholder="Add a new task type..." />
-      <button class="btn-add" onclick="addTask()">+ Add</button>
+<header>
+  <div class="header-left">
+    <div>
+      <h1>Remodel Schedule</h1>
+      <p id="dateRange"></p>
     </div>
-
-    <div class="task-row">
-      <select id="taskSelect">
-        <option value="">-- Select a task --</option>
-      </select>
-    </div>
-
-    <div class="time-entry-row">
-      <label>Date</label>
-      <input type="date" id="entryDate" />
-      <label>Start</label>
-      <input type="time" id="entryStart" />
-      <label>End</label>
-      <input type="time" id="entryEnd" />
-    </div>
-
-    <div class="time-entry-row" style="margin-top:10px;">
-      <label>Note</label>
-      <input type="text" id="entryNote" placeholder="Optional note..." style="flex:1;" />
-    </div>
-
-    <button class="btn-log" onclick="logEntry()">Log Time</button>
-  </div>
-
-  <!-- Summary Card -->
-  <div class="card">
-    <h2>Summary</h2>
-
-    <div class="summary-filters">
-      <label>From</label>
-      <input type="date" id="filterFrom" />
-      <label>To</label>
-      <input type="date" id="filterTo" />
-      <select id="filterTask">
-        <option value="">All tasks</option>
-      </select>
-      <button class="btn-filter" onclick="renderSummary()">Filter</button>
-    </div>
-
-    <div class="chart-container">
-      <canvas id="timeChart"></canvas>
-    </div>
-
-    <div class="session-list" id="sessionList"></div>
-    <div class="total-row" id="totalRow" style="display:none">
-      <span>Total</span><span id="totalTime"></span>
+    <div id="customerWrap">
+      <div class="cw-top">
+        <label>Customer</label>
+        <select id="customerSelect" onchange="onCustomerChange()"><option value="">— select —</option></select>
+        <button id="manageCustomersBtn" onclick="openCustomers()">Manage</button>
+      </div>
+      <div id="customerAddress"></div>
     </div>
   </div>
+  <div class="header-right">
+    <span id="fbStatus" style="font-size:0.78rem;font-weight:600;padding:4px 10px;border-radius:6px;background:#f0f2f5">⏳ Connecting…</span>
+    <button class="btn btn-blue"  id="toggleAddBtn" onclick="toggleAdd()">+ Add Trade</button>
+    <button class="btn btn-amber" onclick="openHistory()">⏱ History</button>
+    <button class="btn btn-red"   onclick="newCalendar()" title="Clear all trades and notes for this customer">↺ New Calendar</button>
+    <button class="btn btn-gray"  onclick="shareSchedule()">⬆ Share URL</button>
+    <button class="btn btn-green" onclick="printPDF()">⎙ Print / PDF</button>
+  </div>
+</header>
 
+<!-- Add trade form -->
+<div id="addPanel" class="hidden">
+  <div class="trade-field-wrap">
+    <label>Trade</label>
+    <div class="trade-select-row">
+      <select id="tradeSelect" onchange="onTradeChange()"></select>
+      <button class="manage-trades-btn" onclick="openTrades()">+ Manage trades</button>
+    </div>
+  </div>
+  <div class="field" id="customField" style="display:none">
+    <label>Custom name</label>
+    <input type="text" id="customTrade" placeholder="e.g. Masonry" maxlength="30">
+  </div>
+  <div class="field">
+    <label>Start date</label>
+    <input type="date" id="startDate">
+  </div>
+  <div class="field">
+    <label>End date</label>
+    <input type="date" id="endDate">
+  </div>
+  <div class="field">
+    <label>Notes (optional)</label>
+    <div class="notes-input-row">
+      <input type="text" id="notesInput" placeholder="e.g. rough-in only" maxlength="60" style="width:180px">
+      <button class="inline-mic" id="inlineMic1" onclick="toggleInlineMic('notesInput','inlineMic1')" title="Dictate note">🎤</button>
+    </div>
+  </div>
+  <button class="btn btn-blue" onclick="addTrade()">Add to Calendar</button>
+  <button class="btn btn-gray" onclick="toggleAdd()">Cancel</button>
 </div>
 
-<!-- Edit Modal -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <h3>Edit Entry</h3>
-    <div class="modal-field">
-      <label>Task</label>
-      <select id="editTask"></select>
-    </div>
-    <div class="modal-field">
-      <label>Date</label>
-      <input type="date" id="editDate" />
-    </div>
-    <div class="modal-field">
-      <label>Start Time</label>
-      <input type="time" id="editStart" />
-    </div>
-    <div class="modal-field">
-      <label>End Time</label>
-      <input type="time" id="editEnd" />
-    </div>
-    <div class="modal-field">
-      <label>Note</label>
-      <input type="text" id="editNote" placeholder="Optional note..." />
+<div class="calendar" id="calendar"></div>
+<div class="legend" id="legend"></div>
+
+<!-- Job notes -->
+<div id="notesSection">
+  <div id="notesHeader">
+    <h2 style="font-size:0.85rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.05em">Job Notes</h2>
+    <button id="micBtn" onclick="toggleMic()" title="Speech to text">
+      <span class="mic-icon">🎤</span>
+      <span id="micLabel">Dictate</span>
+    </button>
+  </div>
+  <textarea id="jobNotesArea" placeholder="Add notes for this job — materials, contacts, reminders…" oninput="onNotesInput()"></textarea>
+  <div id="jobNotesPrint"></div>
+  <div class="notes-footer">
+    <span id="notesSavedMsg"></span>
+    <span id="notesCharCount"></span>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div id="editModal" class="modal-backdrop">
+  <div class="modal-box">
+    <h3>Edit Trade</h3>
+    <div class="modal-grid">
+      <div class="field full">
+        <label>Trade</label>
+        <select id="editTrade" onchange="onEditTradeChange()"></select>
+      </div>
+      <div class="field full" id="editCustomField" style="display:none">
+        <label>Custom name</label>
+        <input type="text" id="editCustomTrade" maxlength="30">
+      </div>
+      <div class="field">
+        <label>Start date</label>
+        <input type="date" id="editStart">
+      </div>
+      <div class="field">
+        <label>End date</label>
+        <input type="date" id="editEnd">
+      </div>
+      <div class="field full">
+        <label>Notes</label>
+        <div class="notes-input-row">
+          <input type="text" id="editNotes" maxlength="60" style="flex:1">
+          <button class="inline-mic" id="inlineMic2" onclick="toggleInlineMic('editNotes','inlineMic2')" title="Dictate note">🎤</button>
+        </div>
+      </div>
     </div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="saveEdit()">Save</button>
+      <button class="btn btn-red" onclick="deleteFromEdit()">Delete</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gray" onclick="closeEdit()">Cancel</button>
+        <button class="btn btn-blue" onclick="saveEdit()">Save Changes</button>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- Manage customers modal -->
+<div id="customersModal" class="modal-backdrop">
+  <div class="modal-box">
+    <h3>Manage Customers</h3>
+    <ul class="item-list" id="customerList"></ul>
+    <div class="add-row">
+      <input type="text" id="newCustomerName" placeholder="Customer name" maxlength="60"
+             onkeydown="if(event.key==='Enter') document.getElementById('newCustomerAddr').focus()">
+      <input type="text" id="newCustomerAddr" placeholder="Address (optional)" maxlength="80"
+             onkeydown="if(event.key==='Enter') addCustomer()">
+      <button class="btn btn-blue" onclick="addCustomer()">Add</button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <span></span>
+      <button class="btn btn-gray" onclick="closeCustomers()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage trades modal -->
+<div id="tradesModal" class="modal-backdrop">
+  <div class="modal-box" style="width:500px">
+    <h3>Manage Trades</h3>
+    <p style="font-size:0.78rem;color:#888;margin-bottom:10px">Click a color swatch to change it. Custom trades can be removed.</p>
+    <ul class="item-list" id="tradeList" style="max-height:280px"></ul>
+    <div class="add-row" style="margin-top:10px">
+      <input type="text" id="newTradeName" placeholder="New trade name" maxlength="30"
+             onkeydown="if(event.key==='Enter') addCustomTradeItem()">
+      <button class="btn btn-blue" onclick="addCustomTradeItem()">Add Trade</button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <span></span>
+      <button class="btn btn-green" onclick="closeTrades()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Version history modal -->
+<div id="historyModal" class="modal-backdrop">
+  <div class="modal-box" style="width:520px">
+    <h3>Version History — <span id="historyCustomerName"></span></h3>
+    <p style="font-size:0.78rem;color:#888;margin-bottom:12px">A snapshot is saved automatically each time you click Share URL. Click Restore to roll back.</p>
+    <ul class="version-list" id="versionList"></ul>
+    <div class="modal-actions">
+      <span></span>
+      <button class="btn btn-gray" onclick="closeHistory()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="colorPalette"><div class="palette-grid" id="paletteGrid"></div></div>
+<div id="toast"></div>
+
 <script>
-  // ── Data ──────────────────────────────────────────────
-  let tasks = JSON.parse(localStorage.getItem('tt_tasks') || '["Admin","Client Work","Meetings","Research","Other"]');
-  let sessions = JSON.parse(localStorage.getItem('tt_sessions') || '[]');
+// ════════════════════════════════════════════════════════
+// FIREBASE REST URL — no SDK needed
+// ════════════════════════════════════════════════════════
+const FB_URL = 'https://remodel-schedule-default-rtdb.firebaseio.com/remodelApp.json';
+// ════════════════════════════════════════════════════════
 
-  let chart = null;
+let fbReady = true; // REST API always available
 
-  // ── Init ──────────────────────────────────────────────
-  function init() {
-    renderTaskOptions();
-    setDefaultDates();
-    setTodayOnEntry();
-    renderSummary();
+function setStatus(msg, color) {
+  const el = document.getElementById('fbStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = color || '#374151';
+  el.style.background = color === '#16a34a' ? '#dcfce7'
+    : color === '#dc2626' ? '#fee2e2' : '#f0f2f5';
+}
+
+function initFirebase() { return true; } // nothing to init
+
+function fbPush() {
+  setStatus('💾 Saving…', '#d97706');
+  lastSaveTime = Date.now();
+  let payload;
+  try { payload = buildPayload(); }
+  catch(e) { setStatus('⚠ Build error: ' + e.message, '#dc2626'); return; }
+  fetch(FB_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(() => { lastSaveTime = Date.now(); setStatus('✓ Saved', '#16a34a'); })
+  .catch(e => setStatus('⚠ Save failed: ' + e.message, '#dc2626'));
+}
+
+function fbLoadOnce() {
+  fetch(FB_URL)
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(data => {
+    if (!data) return;
+    const prev = activeCustomer;
+    applyPayload(data);
+    activeCustomer = (prev && customers.find(c => c.name === prev))
+      ? prev : (customers[0]?.name || '');
+    render(); refreshNotes();
+    setStatus('✓ Synced', '#16a34a');
+  })
+  .catch(e => setStatus('⚠ Load failed: ' + e.message, '#dc2626'));
+}
+
+// Reload from Firebase when page becomes visible
+// but NOT if we just saved — avoids overwriting a save in progress
+let lastSaveTime = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - lastSaveTime > 3000) {
+    fbLoadOnce();
   }
+});
+</script>
 
-  function setTodayOnEntry() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('entryDate').value = today;
-  }
+<script>
+// ── Built-in trades & colors ──────────────────────────────
+const BUILTIN_TRADES = [
+  'Electrical','Plumbing','Roofing','Stucco','Framing','HVAC',
+  'Tile','Painting','Drywall','Flooring','Insulation','Concrete',
+  'Demo','Cabinets','Windows'
+];
+const DEFAULT_COLORS = {
+  Electrical:'#f59e0b', Plumbing:'#3b82f6', Roofing:'#dc2626',
+  Stucco:'#f97316',     Framing:'#16a34a',  HVAC:'#8b5cf6',
+  Tile:'#0891b2',       Painting:'#ec4899', Drywall:'#65a30d',
+  Flooring:'#a16207',   Insulation:'#6b7280', Concrete:'#78716c',
+  Demo:'#374151',       Cabinets:'#b45309', Windows:'#0e7490',
+};
+let tradeColors = {};
+function defaultColor(name) {
+  if (DEFAULT_COLORS[name]) return DEFAULT_COLORS[name];
+  let h=0; for (let c of name) h=(h*31+c.charCodeAt(0))&0xffff;
+  return `hsl(${h%360},55%,38%)`;
+}
+function tradeColor(name) { return tradeColors[name] || defaultColor(name); }
 
-  function save() {
-    localStorage.setItem('tt_tasks', JSON.stringify(tasks));
-    localStorage.setItem('tt_sessions', JSON.stringify(sessions));
-  }
+// ── State ─────────────────────────────────────────────────
+// customers:      [{name, address}]
+// customerEvents: {customerName: [{id,trade,start,end,notes}]}
+// customerNotes:  {customerName: 'text…'}
+// versions:       {customerName: [{ts, label, events}]}  (max 20 per customer)
+let customers = [], customTrades = [], activeCustomer = '', editingId = null;
+let customerEvents = {};   // per-customer event arrays
+let customerNotes  = {};   // per-customer job notes
+let versions = {};         // per-customer version snapshots
 
-  // ── Tasks ─────────────────────────────────────────────
-  function renderTaskOptions() {
-    const sel = document.getElementById('taskSelect');
-    const filterSel = document.getElementById('filterTask');
-    const current = sel.value;
+// helpers
+function getEvents()      { return customerEvents[activeCustomer] || []; }
+function setEvents(arr)   { customerEvents[activeCustomer] = arr; }
 
-    sel.innerHTML = '<option value="">-- Select a task --</option>';
-    filterSel.innerHTML = '<option value="">All tasks</option>';
-
-    tasks.forEach(t => {
-      sel.innerHTML += `<option value="${t}">${t}</option>`;
-      filterSel.innerHTML += `<option value="${t}">${t}</option>`;
-    });
-
-    sel.value = current;
-  }
-
-  function addTask() {
-    const input = document.getElementById('newTaskInput');
-    const name = input.value.trim();
-    if (!name) return;
-    if (tasks.includes(name)) { input.value = ''; return; }
-    tasks.push(name);
-    save();
-    renderTaskOptions();
-    document.getElementById('taskSelect').value = name;
-    input.value = '';
-  }
-
-  document.getElementById('newTaskInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') addTask();
+// ── Persistence ───────────────────────────────────────────
+function buildPayload() {
+  const evData = {};
+  Object.entries(customerEvents).forEach(([k,arr]) => {
+    evData[k] = arr.map(e => ({id:e.id,trade:e.trade,start:fmtISO(e.start),end:fmtISO(e.end),notes:e.notes}));
   });
+  const verData = {};
+  Object.entries(versions).forEach(([k,snaps]) => {
+    verData[k] = snaps.map(s => ({ts:s.ts,label:s.label,events:s.events,jobNotes:s.jobNotes||''}));
+  });
+  return { customers, customTrades, tradeColors, customerEvents:evData, customerNotes, versions:verData };
+}
 
-  // ── Manual Entry ──────────────────────────────────────
-  function logEntry() {
-    const task = document.getElementById('taskSelect').value;
-    const date = document.getElementById('entryDate').value;
-    const startVal = document.getElementById('entryStart').value;
-    const endVal = document.getElementById('entryEnd').value;
+function save() {
+  const payload = buildPayload();
+  // always keep a local backup
+  localStorage.setItem('remodelSchedule_v4', JSON.stringify({...payload, activeCustomer}));
+  // push to Firebase
+  fbPush();
+}
 
-    if (!task) { alert('Please select a task.'); return; }
-    if (!date) { alert('Please enter a date.'); return; }
-    if (!startVal) { alert('Please enter a start time.'); return; }
-    if (!endVal) { alert('Please enter an end time.'); return; }
-
-    const startTime = new Date(`${date}T${startVal}`);
-    const endTime = new Date(`${date}T${endVal}`);
-
-    if (endTime <= startTime) {
-      alert('End time must be after start time.');
-      return;
-    }
-
-    const duration = Math.floor((endTime - startTime) / 1000);
-    const note = document.getElementById('entryNote').value.trim();
-
-    sessions.push({
-      task,
-      start: startTime.toISOString(),
-      end: endTime.toISOString(),
-      duration,
-      note
-    });
-
-    save();
-    renderSummary();
-
-    // Clear time and note fields but keep date and task for quick re-entry
-    document.getElementById('entryStart').value = '';
-    document.getElementById('entryEnd').value = '';
-    document.getElementById('entryNote').value = '';
+function load() {
+  // URL hash import (shared link)
+  const hash = location.hash.slice(1);
+  if (hash) {
+    try { applyPayload(JSON.parse(decodeURIComponent(atob(hash)))); save(); history.replaceState(null,'',location.pathname); } catch {}
+    activeCustomer = localStorage.getItem('activeCustomer') || (customers[0]?.name||'');
+    render(); refreshNotes(); return;
   }
 
-  // ── Summary ───────────────────────────────────────────
-  function setDefaultDates() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('filterFrom').value = today;
-    document.getElementById('filterTo').value = today;
-  }
-
-  function renderSummary() {
-    const from = document.getElementById('filterFrom').value;
-    const to = document.getElementById('filterTo').value;
-    const taskFilter = document.getElementById('filterTask').value;
-
-    let filtered = sessions.filter(s => {
-      const date = localDateStr(new Date(s.start));
-      return (!from || date >= from) && (!to || date <= to) && (!taskFilter || s.task === taskFilter);
-    });
-
-    filtered.sort((a, b) => new Date(b.start) - new Date(a.start));
-
-    renderChart(filtered);
-    renderList(filtered);
-  }
-
-  function renderChart(filtered) {
-    const totals = {};
-    filtered.forEach(s => {
-      totals[s.task] = (totals[s.task] || 0) + s.duration;
-    });
-
-    const labels = Object.keys(totals);
-    const data = labels.map(l => +(totals[l] / 3600).toFixed(2));
-
-    const colors = ['#6c63ff','#ff6584','#43c6ac','#f7971e','#2193b0','#cc2b5e'];
-
-    if (chart) chart.destroy();
-
-    const ctx = document.getElementById('timeChart').getContext('2d');
-
-    if (labels.length === 0) {
-      chart = null;
-      return;
-    }
-
-    chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Hours',
-          data,
-          backgroundColor: labels.map((_, i) => colors[i % colors.length]),
-          borderRadius: 8,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => ' ' + formatDuration(Math.round(ctx.raw * 3600))
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: v => v + 'h'
-            },
-            grid: { color: '#f0f0f0' }
-          },
-          x: { grid: { display: false } }
-        }
+  setStatus('⏳ Loading…', '#d97706');
+  fetch(FB_URL)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(data => {
+      if (data) {
+        applyPayload(data);
+      } else {
+        // Firebase empty — load local and push up
+        const raw = localStorage.getItem('remodelSchedule_v4');
+        if (raw) { try { applyPayload(JSON.parse(raw)); } catch {} }
+        fbPush();
       }
+      activeCustomer = localStorage.getItem('activeCustomer') || (customers[0]?.name||'');
+      render(); refreshNotes();
+      setStatus('✓ Connected', '#16a34a');
+    })
+    .catch(e => {
+      setStatus('⚠ Load failed: ' + e.message, '#dc2626');
+      loadFromLocal(); render(); refreshNotes();
     });
+}
+
+function loadFromLocal() {
+  const raw = localStorage.getItem('remodelSchedule_v4');
+  if (raw) { try { applyPayload(JSON.parse(raw)); return; } catch {} }
+  setDefaults();
+}
+
+function setDefaults() {
+  customers = [];
+  activeCustomer = '';
+}
+
+function applyPayload(p) {
+  customers      = (p.customers||[]).map(c => typeof c==='string'?{name:c,address:''}:c);
+  customTrades   = p.customTrades  || [];
+  tradeColors    = p.tradeColors   || {};
+  activeCustomer = p.activeCustomer || (customers[0]?.name||'');
+  customerNotes  = p.customerNotes  || {};
+  versions       = p.versions      || {};
+
+  // per-customer events
+  customerEvents = {};
+  if (p.customerEvents) {
+    Object.entries(p.customerEvents).forEach(([k,arr]) => {
+      customerEvents[k] = arr.map(e => ({id:e.id,trade:e.trade,start:parseISO(e.start),end:parseISO(e.end),notes:e.notes||''}));
+    });
+  } else if (p.events) {
+    // migrate old single-list format
+    customerEvents[activeCustomer] = p.events.map(e => ({id:e.id,trade:e.trade,start:parseISO(e.start),end:parseISO(e.end),notes:e.notes||''}));
   }
+}
 
-  function renderList(filtered) {
-    const list = document.getElementById('sessionList');
-    const totalRow = document.getElementById('totalRow');
-    const totalEl = document.getElementById('totalTime');
+// ── Version snapshots ─────────────────────────────────────
+function autoSnapshot(label) {
+  if (!activeCustomer) return;
+  const now = new Date();
+  const timeStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' at ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  saveVersion(label + ' — ' + timeStr);
+}
+function saveVersion(label) {
+  if (!activeCustomer) return;
+  const evData = getEvents().map(e=>({id:e.id,trade:e.trade,start:fmtISO(e.start),end:fmtISO(e.end),notes:e.notes}));
+  if (!versions[activeCustomer]) versions[activeCustomer] = [];
+  versions[activeCustomer].unshift({ ts: Date.now(), label, events: evData, jobNotes: customerNotes[activeCustomer]||'' });
+  if (versions[activeCustomer].length > 20) versions[activeCustomer].length = 20;
+  save();
+}
 
-    if (filtered.length === 0) {
-      list.innerHTML = '<div class="no-data">No sessions found for this filter.</div>';
-      totalRow.style.display = 'none';
-      return;
+function openHistory() {
+  document.getElementById('historyCustomerName').textContent = activeCustomer || '(no customer)';
+  renderVersionList();
+  document.getElementById('historyModal').classList.add('show');
+}
+function closeHistory() { document.getElementById('historyModal').classList.remove('show'); }
+
+function renderVersionList() {
+  const ul = document.getElementById('versionList');
+  const snaps = versions[activeCustomer] || [];
+  if (!snaps.length) {
+    ul.innerHTML = '<li style="color:#aaa;font-style:italic;padding:12px">No saved versions yet. Versions are created automatically when you share.</li>';
+    return;
+  }
+  ul.innerHTML = snaps.map((s,i) => {
+    const d = new Date(s.ts);
+    const dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const count = s.events.length;
+    return `<li>
+      <div class="v-info">
+        <span style="font-weight:600">${s.label || 'Snapshot'}</span>
+        <span class="v-meta">${dateStr} at ${timeStr} · ${count} trade${count!==1?'s':''}</span>
+      </div>
+      <div class="v-actions">
+        <button class="btn btn-gray" style="padding:5px 10px;font-size:0.78rem" onclick="restoreVersion(${i})">Restore</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function restoreVersion(i) {
+  const snap = (versions[activeCustomer] || [])[i];
+  if (!snap) return;
+  if (!confirm(`Restore to "${snap.label}"? Current schedule and notes will be replaced.`)) return;
+  customerEvents[activeCustomer] = snap.events.map(e => ({id:e.id,trade:e.trade,start:parseISO(e.start),end:parseISO(e.end),notes:e.notes||''}));
+  if (snap.jobNotes !== undefined) customerNotes[activeCustomer] = snap.jobNotes;
+  save(); render(); refreshNotes(); closeHistory(); showToast('Restored to ' + snap.label);
+}
+
+// ── Date helpers ──────────────────────────────────────────
+function fmtISO(d)  { return d.toISOString().slice(0,10); }
+function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function startOfWeek(d){ const dt=new Date(d); dt.setHours(0,0,0,0); dt.setDate(dt.getDate()-((dt.getDay()+6)%7)); return dt; }
+function addDays(d,n){ const dt=new Date(d); dt.setDate(dt.getDate()+n); return dt; }
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+function diffDays(a,b){ return Math.round((b-a)/86400000); }
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS  =['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function fmtShort(d){ return `${MONTHS[d.getMonth()]} ${d.getDate()}`; }
+
+// ── Trades ────────────────────────────────────────────────
+function allTrades() {
+  return [...BUILTIN_TRADES, ...customTrades].sort((a,b) => a.localeCompare(b));
+}
+function rebuildTradeSelects() {
+  const opts = allTrades().map(t=>`<option>${t}</option>`).join('')+'<option value="Custom…">Custom…</option>';
+  document.getElementById('tradeSelect').innerHTML = opts;
+  document.getElementById('editTrade').innerHTML   = opts;
+}
+
+// ── Customer UI ───────────────────────────────────────────
+function activeCustomerObj() { return customers.find(c=>c.name===activeCustomer)||null; }
+function rebuildCustomerSelect() {
+  const sel=document.getElementById('customerSelect');
+  sel.innerHTML = customers.length===0
+    ? '<option value="">— no customers —</option>'
+    : customers.map(c=>`<option${c.name===activeCustomer?' selected':''}>${c.name}</option>`).join('');
+  document.getElementById('customerAddress').textContent = activeCustomerObj()?.address||'';
+}
+function onCustomerChange() {
+  activeCustomer=document.getElementById('customerSelect').value;
+  localStorage.setItem('activeCustomer', activeCustomer);
+  save(); render(); refreshNotes();
+}
+
+function openCustomers() { renderCustomerList(); document.getElementById('customersModal').classList.add('show'); document.getElementById('newCustomerName').focus(); }
+function closeCustomers() { document.getElementById('customersModal').classList.remove('show'); }
+function renderCustomerList() {
+  const ul=document.getElementById('customerList');
+  if (!customers.length){ul.innerHTML='<li style="color:#aaa;font-style:italic;padding:10px">No customers yet</li>';return;}
+  ul.innerHTML=customers.map((c,i)=>`
+    <li>
+      <div class="item-info">
+        <span>${c.name}</span>
+        ${c.address?`<span class="item-sub">${c.address}</span>`:''}
+      </div>
+      <button onclick="removeCustomer(${i})">✕</button>
+    </li>`).join('');
+}
+function addCustomer() {
+  const name=document.getElementById('newCustomerName').value.trim();
+  const addr=document.getElementById('newCustomerAddr').value.trim();
+  if (!name) return;
+  if (customers.find(c=>c.name===name)){showToast('Customer already exists');return;}
+  customers.push({name,address:addr});
+  if (!activeCustomer) activeCustomer=name;
+  document.getElementById('newCustomerName').value='';
+  document.getElementById('newCustomerAddr').value='';
+  rebuildCustomerSelect(); renderCustomerList(); save(); render();
+}
+function removeCustomer(i) {
+  const removed=customers[i].name;
+  customers.splice(i,1);
+  if (activeCustomer===removed) activeCustomer=customers[0]?.name||'';
+  rebuildCustomerSelect(); renderCustomerList(); save(); render();
+}
+
+// ── Trades UI ─────────────────────────────────────────────
+function openTrades() { renderTradeList(); document.getElementById('tradesModal').classList.add('show'); document.getElementById('newTradeName').focus(); }
+function closeTrades() { document.getElementById('tradesModal').classList.remove('show'); }
+
+// ── Color palette ─────────────────────────────────────────
+const PALETTE = [
+  '#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#16a34a',
+  '#0d9488','#0891b2','#2563eb','#4f46e5','#7c3aed','#9333ea',
+  '#c026d3','#db2777','#e11d48','#78716c','#6b7280','#374151',
+  '#b45309','#0e7490','#166534','#1e3a5f','#f97316','#f59e0b',
+];
+let paletteTarget=null;
+function openPalette(tradeName, swatchEl) {
+  paletteTarget=tradeName;
+  const current=tradeColor(tradeName);
+  document.getElementById('paletteGrid').innerHTML=PALETTE.map(c=>
+    `<div class="pc${c===current?' selected':''}" style="background:${c}" onclick="pickColor('${c}')"></div>`
+  ).join('');
+  const pal=document.getElementById('colorPalette');
+  pal.style.display='block';
+  const r=swatchEl.getBoundingClientRect();
+  let top=r.bottom+6, left=r.left;
+  if (left+192>window.innerWidth) left=window.innerWidth-200;
+  pal.style.top=top+'px'; pal.style.left=left+'px';
+}
+function pickColor(hex) {
+  if (!paletteTarget) return;
+  tradeColors[paletteTarget]=hex;
+  closePalette(); save(); render(); renderTradeList();
+}
+function closePalette() { document.getElementById('colorPalette').style.display='none'; paletteTarget=null; }
+document.addEventListener('click', e=>{
+  const pal=document.getElementById('colorPalette');
+  if (pal.style.display==='block'&&!pal.contains(e.target)&&!e.target.closest('.swatch-btn')) closePalette();
+});
+
+function renderTradeList() {
+  const ul=document.getElementById('tradeList');
+  ul.innerHTML=allTrades().map(t=>{
+    const color=tradeColor(t);
+    const isCustom=customTrades.includes(t);
+    const removeBtn=isCustom?`<button onclick="removeCustomTrade('${t}')" title="Remove">✕</button>`:'';
+    return `<li>
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <button class="swatch-btn" onclick="openPalette('${t}',this)" title="Change color"
+          style="width:24px;height:24px;border-radius:4px;background:${color};border:2px solid rgba(0,0,0,.18);cursor:pointer;flex-shrink:0;padding:0"></button>
+        <span>${t}${isCustom?'':' <span style="font-size:0.68rem;color:#aaa">(built-in)</span>'}</span>
+      </div>${removeBtn}</li>`;
+  }).join('');
+}
+function addCustomTradeItem() {
+  const name=document.getElementById('newTradeName').value.trim();
+  if (!name) return;
+  if (allTrades().includes(name)){showToast('Trade already exists');return;}
+  customTrades.push(name);
+  document.getElementById('newTradeName').value='';
+  rebuildTradeSelects(); renderTradeList(); save();
+}
+function removeCustomTrade(name) {
+  const i=customTrades.indexOf(name);
+  if (i>=0) customTrades.splice(i,1);
+  delete tradeColors[name];
+  rebuildTradeSelects(); renderTradeList(); save(); render();
+}
+
+// ── Calendar render ───────────────────────────────────────
+function render() {
+  rebuildCustomerSelect();
+  rebuildTradeSelects();
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const w0=startOfWeek(today);
+  const weeks=[w0,addDays(w0,7),addDays(w0,14)];
+  const wEnd=addDays(weeks[2],6);
+
+  document.getElementById('dateRange').textContent =
+    `${fmtShort(w0)} – ${fmtShort(wEnd)}`+(activeCustomer?`  ·  ${activeCustomer}`:'');
+  document.title=activeCustomer?`${activeCustomer} — Remodel Schedule`:'Remodel Schedule';
+
+  const cal=document.getElementById('calendar');
+  cal.innerHTML='';
+  const legendTrades={};
+  const events=getEvents();
+
+  weeks.forEach((ws,wi)=>{
+    const we=addDays(ws,6);
+    const block=document.createElement('div'); block.className='week-block';
+    const hdr=document.createElement('div');   hdr.className='week-header';
+
+    const wl=document.createElement('div'); wl.className='week-label';
+    wl.textContent=wi===0?'This Week':wi===1?'Next Week':'Week 3';
+    hdr.appendChild(wl);
+
+    for (let di=0;di<7;di++){
+      const d=addDays(ws,di);
+      const cell=document.createElement('div');
+      cell.className='day-hdr'+(sameDay(d,today)?' today':'')+(di>=5?' weekend':'');
+      cell.innerHTML=`<div class="dow">${DAYS[di]}</div><div class="date">${fmtShort(d)}</div>`;
+      hdr.appendChild(cell);
+    }
+    block.appendChild(hdr);
+
+    const body=document.createElement('div'); body.className='week-body';
+    const lbl=document.createElement('div');  lbl.className='row-label'; body.appendChild(lbl);
+
+    for (let di=0;di<7;di++){
+      const d=addDays(ws,di);
+      const dc=document.createElement('div');
+      dc.className='day-cell'+(sameDay(d,today)?' today':'')+(di>=5?' weekend':'');
+      body.appendChild(dc);
     }
 
-    list.innerHTML = filtered.map(s => {
-      const realIdx = sessions.indexOf(s);
-      const start = new Date(s.start);
-      const end = new Date(s.end);
-      const dateStr = start.toLocaleDateString();
-      const timeStr = start.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
-                      ' – ' + end.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-      return `
-        <div class="session-item">
-          <div>
-            <div class="task-name">${s.task}</div>
-            <div class="session-time">${dateStr} &nbsp;${timeStr}</div>
-            ${s.note ? `<div class="session-note">${s.note}</div>` : ''}
-          </div>
-          <div class="item-actions">
-            <span class="duration">${formatDuration(s.duration)}</span>
-            <button class="btn-edit" onclick="openEdit(${realIdx})">Edit</button>
-            <button class="btn-delete" onclick="deleteEntry(${realIdx})">Delete</button>
-          </div>
-        </div>`;
-    }).join('');
+    const weekEvts=events.filter(e=>e.end>=ws&&e.start<=we);
+    if (weekEvts.length>0){
+      const overlay=document.createElement('div'); overlay.className='bars-overlay';
+      const rowEnds=[]; let maxRow=0;
+      weekEvts.forEach(ev=>{
+        const barStart=ev.start<ws?ws:ev.start;
+        const barEnd  =ev.end>we?we:ev.end;
+        const col=diffDays(ws,barStart), span=diffDays(barStart,barEnd)+1;
+        let row=0;
+        while(rowEnds[row]!==undefined&&rowEnds[row]>=col) row++;
+        rowEnds[row]=col+span-1; if(row>maxRow) maxRow=row;
+        legendTrades[ev.trade]=tradeColor(ev.trade);
+        const colW=100/7;
+        const bar=document.createElement('div'); bar.className='trade-bar';
+        bar.style.cssText=`background:${tradeColor(ev.trade)};left:calc(${col*colW}% + 3px);width:calc(${span*colW}% - 6px);top:${4+row*34}px;`;
+        let html=ev.trade;
+        if(ev.notes) html+=`<span class="note">— ${ev.notes}</span>`;
+        bar.innerHTML=html;
+        bar.title=`${ev.trade} · ${fmtShort(ev.start)}–${fmtShort(ev.end)}${ev.notes?'\n'+ev.notes:''}\nClick to edit`;
+        bar.onclick=()=>openEdit(ev.id);
+        overlay.appendChild(bar);
+      });
+      const needed=(maxRow+1)*34+12;
+      body.style.minHeight=Math.max(60,needed)+'px';
+      lbl.style.minHeight =Math.max(60,needed)+'px';
+      body.appendChild(overlay);
+    }
 
-    const total = filtered.reduce((sum, s) => sum + s.duration, 0);
-    totalEl.textContent = formatDuration(total);
-    totalRow.style.display = 'flex';
-  }
-
-  // ── Edit / Delete ─────────────────────────────────────
-  let editingIndex = null;
-
-  function openEdit(idx) {
-    editingIndex = idx;
-    const s = sessions[idx];
-    const start = new Date(s.start);
-    const end = new Date(s.end);
-
-    // Populate task dropdown in modal
-    const sel = document.getElementById('editTask');
-    sel.innerHTML = '';
-    tasks.forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
-    sel.value = s.task;
-
-    document.getElementById('editDate').value = start.toISOString().split('T')[0];
-    document.getElementById('editStart').value = start.toTimeString().slice(0,5);
-    document.getElementById('editEnd').value = end.toTimeString().slice(0,5);
-    document.getElementById('editNote').value = s.note || '';
-
-    document.getElementById('editModal').classList.add('open');
-  }
-
-  function closeModal() {
-    document.getElementById('editModal').classList.remove('open');
-    editingIndex = null;
-  }
-
-  function saveEdit() {
-    const task = document.getElementById('editTask').value;
-    const date = document.getElementById('editDate').value;
-    const startVal = document.getElementById('editStart').value;
-    const endVal = document.getElementById('editEnd').value;
-    const note = document.getElementById('editNote').value.trim();
-
-    const startTime = new Date(`${date}T${startVal}`);
-    const endTime = new Date(`${date}T${endVal}`);
-
-    if (endTime <= startTime) { alert('End time must be after start time.'); return; }
-
-    sessions[editingIndex] = {
-      task,
-      start: startTime.toISOString(),
-      end: endTime.toISOString(),
-      duration: Math.floor((endTime - startTime) / 1000),
-      note
-    };
-
-    save();
-    renderSummary();
-    closeModal();
-  }
-
-  function deleteEntry(idx) {
-    if (!confirm('Delete this entry?')) return;
-    sessions.splice(idx, 1);
-    save();
-    renderSummary();
-  }
-
-  // Close modal if clicking outside
-  document.getElementById('editModal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
+    block.appendChild(body); cal.appendChild(block);
   });
 
-  // ── Helpers ───────────────────────────────────────────
-  function localDateStr(d) {
-    return d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0');
-  }
+  const leg=document.getElementById('legend'); leg.innerHTML='';
+  Object.entries(legendTrades).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([name,color])=>{
+    const item=document.createElement('div'); item.className='legend-item';
+    item.innerHTML=`<div class="legend-swatch" style="background:${color}"></div>${name}`;
+    leg.appendChild(item);
+  });
+}
 
-  function formatDuration(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+// ── Add trade ─────────────────────────────────────────────
+function toggleAdd() {
+  const panel=document.getElementById('addPanel'), btn=document.getElementById('toggleAddBtn');
+  const hidden=panel.classList.toggle('hidden');
+  btn.textContent=hidden?'+ Add Trade':'✕ Close';
+  if (!hidden){
+    const today=new Date();
+    document.getElementById('startDate').value=fmtISO(today);
+    document.getElementById('endDate').value  =fmtISO(addDays(today,1));
+    document.getElementById('notesInput').value='';
   }
+}
+function onTradeChange(){ document.getElementById('customField').style.display=document.getElementById('tradeSelect').value==='Custom…'?'':'none'; }
+function addTrade() {
+  let trade=document.getElementById('tradeSelect').value;
+  if (trade==='Custom…'){ trade=document.getElementById('customTrade').value.trim(); if(!trade){alert('Enter a custom trade name.');return;} }
+  const sv=document.getElementById('startDate').value, ev=document.getElementById('endDate').value;
+  if (!sv||!ev){alert('Select both dates.');return;}
+  const start=parseISO(sv), end=parseISO(ev);
+  if (end<start){alert('End date must be on or after start date.');return;}
+  const arr=getEvents();
+  arr.push({id:Date.now().toString(),trade,start,end,notes:document.getElementById('notesInput').value.trim()});
+  setEvents(arr); save(); render();
+  document.getElementById('notesInput').value='';
+  document.getElementById('customTrade').value='';
+}
 
-  init();
+// ── Edit modal ────────────────────────────────────────────
+function openEdit(id) {
+  editingId=id;
+  const ev=getEvents().find(e=>e.id===id);
+  const sel=document.getElementById('editTrade');
+  if (allTrades().includes(ev.trade)){sel.value=ev.trade;document.getElementById('editCustomField').style.display='none';}
+  else{sel.value='Custom…';document.getElementById('editCustomField').style.display='';document.getElementById('editCustomTrade').value=ev.trade;}
+  document.getElementById('editStart').value=fmtISO(ev.start);
+  document.getElementById('editEnd').value  =fmtISO(ev.end);
+  document.getElementById('editNotes').value=ev.notes;
+  document.getElementById('editModal').classList.add('show');
+}
+function closeEdit(){ editingId=null; document.getElementById('editModal').classList.remove('show'); }
+function onEditTradeChange(){ document.getElementById('editCustomField').style.display=document.getElementById('editTrade').value==='Custom…'?'':'none'; }
+function saveEdit() {
+  let trade=document.getElementById('editTrade').value;
+  if (trade==='Custom…'){ trade=document.getElementById('editCustomTrade').value.trim(); if(!trade){alert('Enter a custom trade name.');return;} }
+  const sv=document.getElementById('editStart').value, ev=document.getElementById('editEnd').value;
+  if (!sv||!ev){alert('Select both dates.');return;}
+  const start=parseISO(sv), end=parseISO(ev);
+  if (end<start){alert('End date must be on or after start date.');return;}
+  const arr=getEvents(), e=arr.find(e=>e.id===editingId);
+  e.trade=trade; e.start=start; e.end=end; e.notes=document.getElementById('editNotes').value.trim();
+  setEvents(arr); save(); render(); closeEdit();
+}
+function deleteFromEdit(){
+  setEvents(getEvents().filter(e=>e.id!==editingId));
+  save(); render(); closeEdit();
+}
+
+// ── Share ─────────────────────────────────────────────────
+function shareSchedule() {
+  // save a version snapshot first
+  const now=new Date();
+  const label=`${now.toLocaleDateString('en-US',{month:'short',day:'numeric'})} at ${now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+  saveVersion(label);
+
+  const evData={};
+  Object.entries(customerEvents).forEach(([k,arr])=>{
+    evData[k]=arr.map(e=>({id:e.id,trade:e.trade,start:fmtISO(e.start),end:fmtISO(e.end),notes:e.notes}));
+  });
+  const payload={customers,customTrades,tradeColors,activeCustomer,customerEvents:evData,customerNotes};
+  const url=location.origin+location.pathname+'#'+btoa(encodeURIComponent(JSON.stringify(payload)));
+  navigator.clipboard.writeText(url)
+    .then(()=>showToast('Link copied & version saved!'))
+    .catch(()=>prompt('Copy this link and share with your team:',url));
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── Job notes ────────────────────────────────────────────
+let notesSaveTimer = null;
+
+function autoGrowNotes() {
+  const ta = document.getElementById('jobNotesArea');
+  ta.style.height = 'auto';
+  ta.style.height = Math.max(80, ta.scrollHeight) + 'px';
+}
+
+function syncPrintNotes(text) {
+  // plain-text into a div safe for printing — preserve line breaks
+  const div = document.getElementById('jobNotesPrint');
+  div.textContent = text; // textContent escapes HTML and preserves text
+}
+
+function refreshNotes() {
+  const ta  = document.getElementById('jobNotesArea');
+  const msg = document.getElementById('notesSavedMsg');
+  const cnt = document.getElementById('notesCharCount');
+  const text = customerNotes[activeCustomer] || '';
+  ta.value = text;
+  msg.textContent = '';
+  cnt.textContent = text.length > 0 ? `${text.length} chars` : '';
+  autoGrowNotes();
+  syncPrintNotes(text);
+}
+
+function onNotesInput() {
+  const ta  = document.getElementById('jobNotesArea');
+  const msg = document.getElementById('notesSavedMsg');
+  const cnt = document.getElementById('notesCharCount');
+  const text = ta.value;
+  autoGrowNotes();
+  syncPrintNotes(text);
+  cnt.textContent = text.length > 0 ? `${text.length} chars` : '';
+  msg.textContent = 'Saving…';
+  clearTimeout(notesSaveTimer);
+  notesSaveTimer = setTimeout(() => {
+    customerNotes[activeCustomer] = text;
+    save();
+    msg.textContent = 'Saved';
+    setTimeout(() => { msg.textContent = ''; }, 1800);
+  }, 600);
+}
+
+// ── New Calendar ─────────────────────────────────────────
+function newCalendar() {
+  if (!activeCustomer) { showToast('Select a customer first.'); return; }
+  const count = getEvents().length;
+  const msg = count > 0
+    ? `Clear all ${count} trade${count!==1?'s':''} and notes for "${activeCustomer}"?\n\nA version snapshot will be saved first so you can restore it from History.`
+    : `Reset the calendar for "${activeCustomer}"?`;
+  if (!confirm(msg)) return;
+  // auto-save a snapshot with customer name + date range before wiping
+  const today2 = new Date(); today2.setHours(0,0,0,0);
+  const w0s = startOfWeek(today2);
+  const wEnd2 = addDays(w0s, 20);
+  const rangeLabel = `${fmtShort(w0s)}–${fmtShort(wEnd2)}`;
+  const label = `${activeCustomer} · ${rangeLabel}`;
+  saveVersion(label);
+  // clear
+  customerEvents[activeCustomer] = [];
+  customerNotes[activeCustomer]   = '';
+  save(); render(); refreshNotes();
+  showToast('Calendar cleared — snapshot saved to History.');
+}
+
+// ── Speech to text ────────────────────────────────────────
+let recognition = null;
+let isListening  = false;
+
+function toggleMic() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Speech recognition is not supported in this browser.\nPlease use Google Chrome.');
+    return;
+  }
+  if (isListening) { recognition.stop(); return; }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous    = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  const ta = document.getElementById('jobNotesArea');
+  let baseText = ta.value;   // text already in box before dictation starts
+  if (baseText && !baseText.endsWith(' ') && !baseText.endsWith('\n')) baseText += ' ';
+
+  recognition.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t + ' ';
+      else interim += t;
+    }
+    if (final) { baseText += final; }
+    ta.value = baseText + interim;
+    autoGrowNotes();
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('micLabel').textContent = 'Dictate';
+    // commit whatever ended up in the box
+    onNotesInput();
+  };
+
+  recognition.onerror = e => {
+    if (e.error !== 'aborted') showToast('Microphone error: ' + e.error);
+    recognition.stop();
+  };
+
+  recognition.start();
+  isListening = true;
+  document.getElementById('micBtn').classList.add('listening');
+  document.getElementById('micLabel').textContent = 'Stop';
+  ta.focus();
+}
+
+// ── Inline mic for trade note inputs ─────────────────────
+let inlineRecognition = null;
+let inlineListening   = false;
+let inlineMicBtnId    = null;
+
+function toggleInlineMic(inputId, btnId) {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Speech recognition requires Google Chrome.');
+    return;
+  }
+  // if already listening for this button, stop
+  if (inlineListening && inlineMicBtnId === btnId) {
+    inlineRecognition.stop();
+    return;
+  }
+  // stop any existing session
+  if (inlineListening && inlineRecognition) inlineRecognition.stop();
+
+  const input = document.getElementById(inputId);
+  const btn   = document.getElementById(btnId);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  inlineRecognition = new SR();
+  inlineRecognition.continuous     = false;
+  inlineRecognition.interimResults  = true;
+  inlineRecognition.lang = 'en-US';
+
+  let baseText = input.value;
+  if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+
+  inlineRecognition.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    if (final) { input.value = (baseText + final).trim(); }
+    else { input.value = baseText + interim; }
+  };
+
+  inlineRecognition.onend = () => {
+    inlineListening = false;
+    inlineMicBtnId  = null;
+    btn.classList.remove('listening');
+    btn.textContent = '🎤';
+  };
+
+  inlineRecognition.onerror = e => {
+    if (e.error !== 'aborted') showToast('Mic error: ' + e.error);
+    inlineRecognition.stop();
+  };
+
+  inlineRecognition.start();
+  inlineListening = true;
+  inlineMicBtnId  = btnId;
+  btn.classList.add('listening');
+  btn.textContent = '⏹';
+  input.focus();
+}
+
+// ── Print with filename ───────────────────────────────────
+function printPDF() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const w0  = startOfWeek(today);
+  const wEnd = addDays(w0, 20);
+  const range = `${fmtShort(w0)}–${fmtShort(wEnd)}`;
+  const base  = activeCustomer ? `${activeCustomer} ${range}` : `Remodel Schedule ${range}`;
+  const prev  = document.title;
+  document.title = base;
+  window.print();
+  // restore after a tick so print dialog has time to read the title
+  setTimeout(() => { document.title = prev; }, 1000);
+}
+
+// ── Init ──────────────────────────────────────────────────
+initFirebase();
+load();
 </script>
 </body>
 </html>
