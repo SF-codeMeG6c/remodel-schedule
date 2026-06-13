@@ -154,18 +154,22 @@
         <div class="filter-bar">
           <div class="form-group search-group">
             <label>Search</label>
-            <input type="text" id="book-search" placeholder="Item, vendor..." oninput="renderBook()">
+            <input type="text" id="book-search" placeholder="Item, vendor, job..." oninput="renderBook()">
           </div>
           <div class="form-group">
             <label>Trade</label>
             <select id="book-trade" onchange="renderBook()"></select>
+          </div>
+          <div class="form-group">
+            <label>Vendor</label>
+            <select id="book-vendor" onchange="renderBook()"></select>
           </div>
           <div class="form-group" style="justify-content:flex-end">
             <button class="btn btn-secondary btn-sm" onclick="clearQtys()">Clear Quantities</button>
           </div>
         </div>
         <div class="alert alert-info" id="book-empty" style="display:none">
-          No pricing yet. Add your subs under <strong>Vendors</strong>, then use <strong>+ Record Price</strong> to log what they charge. The price book always shows each vendor's <em>latest</em> price with your margin applied &mdash; older prices stay in the History archive.
+          No pricing yet. Add your subs under <strong>Vendors</strong>, then use <strong>+ Record Price</strong> to log what they charge.
         </div>
         <div class="table-wrap">
           <table id="book-table">
@@ -650,12 +654,21 @@ function showSection(name) {
 // ══════════════════════════════════════════════
 function renderBook() {
   fillTradeSelect(document.getElementById('book-trade'), { allLabel: 'All Trades', fromData: true });
+
+  // populate vendor dropdown
+  const vendorEl = document.getElementById('book-vendor');
+  const curVendor = vendorEl.value;
+  vendorEl.innerHTML = '<option value="">All Vendors</option>' +
+    vendors.map(v => '<option value="' + v.id + '"' + (v.id == curVendor ? ' selected' : '') + '>' + esc(v.name) + '</option>').join('');
+
   const q = document.getElementById('book-search').value.trim().toLowerCase();
   const fTrade = document.getElementById('book-trade').value;
+  const fVendor = vendorEl.value;
 
-  const latest = latestPrices().filter(p => {
+  const latest = prices.filter(p => {
     if (fTrade && p.trade !== fTrade) return false;
-    if (q && !(p.item + ' ' + vendorName(p.vendorId)).toLowerCase().includes(q)) return false;
+    if (fVendor && p.vendorId != fVendor) return false;
+    if (q && !(p.item + ' ' + vendorName(p.vendorId) + ' ' + (p.jobName || '') + ' ' + (p.notes || '')).toLowerCase().includes(q)) return false;
     return true;
   });
 
