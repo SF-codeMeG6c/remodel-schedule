@@ -233,7 +233,11 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Vendor Quote ($)</label>
-                <input type="number" id="p-quote" step="0.01" min="0" placeholder="0.00" oninput="liveCalc()">
+                <input type="number" id="p-quote" step="0.01" min="0" placeholder="0.00" oninput="liveCalcFrom('vendor')">
+              </div>
+              <div class="form-group">
+                <label>Retail Quote ($)</label>
+                <input type="number" id="p-retail-quote" step="0.01" min="0" placeholder="back-calc" oninput="liveCalcFrom('retail')">
               </div>
               <div class="form-group">
                 <label>Quantity</label>
@@ -266,7 +270,7 @@
             <div class="cr-title">Results</div>
             <div class="cr-row">
               <label>Margin %</label>
-              <input type="number" id="p-margin" step="0.5" min="0" max="99" oninput="liveCalc()">
+              <input type="number" id="p-margin" step="0.5" min="0" max="99" oninput="liveCalcFrom(document.getElementById('p-quote').value ? 'vendor' : 'retail')">
             </div>
             <div class="cr-row">
               <label>Vendor Cost / Unit</label>
@@ -814,6 +818,33 @@ function currentUnit() {
   return u === '__custom' ? document.getElementById('p-unit-custom').value.trim() : u;
 }
 
+function vendorFromRetail(retail, pct) {
+  if (settings.method === 'markup') return retail / (1 + pct / 100);
+  return pct >= 100 ? 0 : retail * (1 - pct / 100);
+}
+
+function liveCalcFrom(source) {
+  const m = parseFloat(document.getElementById('p-margin').value) || 0;
+  const vendorEl = document.getElementById('p-quote');
+  const retailEl = document.getElementById('p-retail-quote');
+  if (source === 'vendor') {
+    const v = parseFloat(vendorEl.value);
+    if (!isNaN(v) && v > 0) {
+      retailEl.value = sellPrice(v, m).toFixed(2);
+    } else {
+      retailEl.value = '';
+    }
+  } else {
+    const r = parseFloat(retailEl.value);
+    if (!isNaN(r) && r > 0) {
+      vendorEl.value = vendorFromRetail(r, m).toFixed(2);
+    } else {
+      vendorEl.value = '';
+    }
+  }
+  liveCalc();
+}
+
 function liveCalc() {
   const quote = parseFloat(document.getElementById('p-quote').value);
   const qty = parseFloat(document.getElementById('p-qty').value);
@@ -881,13 +912,13 @@ function savePrice() {
     (cust ? ' &mdash; job: ' + esc(cust.name) : '') + '.';
   al.style.display = '';
   // keep trade & vendor selected for fast multi-entry; clear amounts
-  ['p-quote','p-qty','p-desc','p-op-new'].forEach(id => document.getElementById(id).value = '');
+  ['p-quote','p-retail-quote','p-qty','p-desc','p-op-new'].forEach(id => document.getElementById(id).value = '');
   syncOps(trade, op);
   liveCalc();
 }
 
 function resetPriceForm() {
-  ['p-quote','p-qty','p-desc','p-op-new','p-unit-custom'].forEach(id => document.getElementById(id).value = '');
+  ['p-quote','p-retail-quote','p-qty','p-desc','p-op-new','p-unit-custom'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('p-date').value = todayISO();
   document.getElementById('price-saved').style.display = 'none';
   onTradeChange(true);
