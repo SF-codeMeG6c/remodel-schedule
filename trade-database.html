@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Pricing Database</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #1a56a0;
+    --primary-dark: #134080;
+    --accent: #e8f0fb;
+    --border: #d1d9e6;
+    --text: #1e2532;
+    --text-muted: #6b7a99;
+    --success: #1a7a4a;
+    --danger: #c0392b;
+    --warning: #d97706;
+    --bg: #f5f7fb;
+    --card: #ffffff;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+  header { background: var(--primary); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+  header .subtitle { font-size: 12px; opacity: .75; margin-top: 2px; }
+  nav { background: var(--primary-dark); display: flex; gap: 2px; padding: 0 16px; flex-wrap: wrap; }
+  nav button { background: none; border: none; color: rgba(255,255,255,.75); padding: 10px 18px; cursor: pointer; font-size: 13px; font-family: Arial; border-bottom: 3px solid transparent; transition: all .15s; }
+  nav button:hover { color: #fff; }
+  nav button.active { color: #fff; border-bottom-color: #7eb3f5; }
+  main { flex: 1; padding: 24px; max-width: 1250px; margin: 0 auto; width: 100%; }
+
+  /* ── Cards & Sections ── */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; color: var(--primary); }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Forms ── */
+  .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+  .form-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .form-group input, .form-group select, .form-group textarea { border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; font-size: 13px; font-family: Arial; color: var(--text); background: #fff; transition: border-color .15s; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,160,.1); }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .form-group .hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .form-group input[readonly] { background: #f1f5f9; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-family: Arial; font-weight: 600; transition: all .15s; white-space: nowrap; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: #e8edf5; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #d5dcea; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #155c38; }
+  .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fee2e2; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--accent); color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 9px 10px; text-align: left; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  td { padding: 8px 10px; border-bottom: 1px solid #edf0f7; vertical-align: middle; }
+  tr:hover td { background: #fafbfd; }
+  .empty-row td { text-align: center; color: var(--text-muted); padding: 32px; font-style: italic; }
+  .num { text-align: right; white-space: nowrap; }
+  th.num { text-align: right; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-gray { background: #f1f5f9; color: #64748b; }
+  .badge-gold { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+  .trade-head td { background: var(--accent); font-weight: 700; color: var(--primary); font-size: 13px; border-bottom: 2px solid var(--border); }
+  .trade-head .margin-note { font-weight: 400; font-size: 11px; color: var(--text-muted); margin-left: 10px; }
+  td a { color: var(--primary); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+  .qty-input { width: 70px; border: 1px solid var(--border); border-radius: 5px; padding: 5px 7px; font-size: 13px; text-align: right; }
+  .qty-input:focus { outline: none; border-color: var(--primary); }
+
+  /* ── Filter bar & pills ── */
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
+  .filter-bar .form-group { flex: 0 1 auto; }
+  .filter-bar .search-group { flex: 1 1 200px; }
+  .stat-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat-pill { background: var(--accent); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: var(--primary); font-weight: 600; }
+
+  /* ── Estimate totals bar ── */
+  .totals-bar { position: sticky; bottom: 0; background: var(--primary); color: #fff; border-radius: var(--radius); padding: 12px 20px; display: none; align-items: center; gap: 24px; flex-wrap: wrap; box-shadow: 0 -2px 12px rgba(20,40,80,.25); margin-top: 4px; }
+  .totals-bar.show { display: flex; }
+  .totals-bar .tot { font-size: 13px; }
+  .totals-bar .tot b { display: block; font-size: 17px; margin-top: 2px; }
+  .totals-bar .spacer { flex: 1; }
+
+  /* ── Alerts ── */
+  .alert { padding: 10px 14px; border-radius: 5px; font-size: 13px; margin-bottom: 14px; }
+  .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .alert-success { background: #f0fdf4; color: #14532d; border: 1px solid #bbf7d0; }
+
+  /* ── Settings: trade manager ── */
+  .trade-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); border: 1px solid var(--border); border-radius: 16px; padding: 4px 6px 4px 12px; font-size: 12px; margin: 0 6px 6px 0; }
+  .trade-chip button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; }
+  .trade-chip button:hover { color: var(--danger); }
+  .margin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; }
+  .margin-grid .mg-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .margin-grid .mg-row label { flex: 1; }
+  .margin-grid .mg-row input { width: 70px; border: 1px solid var(--border); border-radius: 5px; padding: 5px 7px; font-size: 13px; text-align: right; }
+
+  /* ── Price calculator ── */
+  .calc-wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .calc-inputs { flex: 2; min-width: 300px; }
+  .calc-results { flex: 1; min-width: 260px; background: var(--accent); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; position: sticky; top: 12px; }
+  .cr-title { font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+  .cr-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #d8e2f0; }
+  .cr-row label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .cr-row input { width: 80px; border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; font-size: 14px; text-align: right; font-weight: 700; }
+  .cr-row input:focus { outline: none; border-color: var(--primary); }
+  .cr-val { font-weight: 700; font-size: 14px; }
+  .cr-row.big { border-bottom: none; }
+  .cr-row.big .cr-val { font-size: 20px; color: var(--primary); }
+  .cr-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; min-height: 14px; }
+
+  @media (max-width: 640px) { main { padding: 14px; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>&#128736; Trade Pricing Database</h1>
+      <div class="subtitle">Freeman Restoration Inc &mdash; Vendor Pricing, Margin &amp; Estimating</div>
+    </div>
+  </header>
+  <nav>
+    <button class="active" data-section="book" onclick="showSection('book')">Price Book</button>
+    <button data-section="addprice" onclick="showSection('addprice')">+ Record Price</button>
+    <button data-section="history" onclick="showSection('history')">Price History</button>
+    <button data-section="vendors" onclick="showSection('vendors')">Vendors</button>
+    <button data-section="settings" onclick="showSection('settings')">Margin &amp; Settings</button>
+  </nav>
+
+  <main>
+    <!-- ════════ PRICE BOOK / ESTIMATOR ════════ -->
+    <div class="section active" id="section-book">
+      <div class="card">
+        <div class="stat-pills" id="book-pills"></div>
+        <div class="filter-bar">
+          <div class="form-group search-group">
+            <label>Search</label>
+            <input type="text" id="book-search" placeholder="Item, vendor..." oninput="renderBook()">
+          </div>
+          <div class="form-group">
+            <label>Trade</label>
+            <select id="book-trade" onchange="renderBook()"></select>
+          </div>
+          <div class="form-group" style="justify-content:flex-end">
+            <button class="btn btn-secondary btn-sm" onclick="clearQtys()">Clear Quantities</button>
+          </div>
+        </div>
+        <div class="alert alert-info" id="book-empty" style="display:none">
+          No pricing yet. Add your subs under <strong>Vendors</strong>, then use <strong>+ Record Price</strong> to log what they charge. The price book always shows each vendor's <em>latest</em> price with your margin applied &mdash; older prices stay in the History archive.
+        </div>
+        <div class="table-wrap">
+          <table id="book-table">
+            <thead>
+              <tr>
+                <th>Operation</th>
+                <th>Unit</th>
+                <th>Vendor</th>
+                <th class="num">Vendor Cost</th>
+                <th>As Of</th>
+                <th class="num">Margin</th>
+                <th class="num">Retail / Unit</th>
+                <th class="num">Qty</th>
+                <th class="num">Extended</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="book-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="totals-bar" id="totals-bar">
+        <div class="tot">Vendor Cost<b id="tot-cost">$0.00</b></div>
+        <div class="tot">Your Price<b id="tot-price">$0.00</b></div>
+        <div class="tot">Gross Profit<b id="tot-profit">$0.00</b></div>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary btn-sm" onclick="clearQtys()">Clear</button>
+      </div>
+    </div>
+
+    <!-- ════════ PRICE CALCULATOR / RECORD PRICE ════════ -->
+    <div class="section" id="section-addprice">
+      <div class="card">
+        <div class="card-title">Price Calculator &mdash; Record a Vendor Price</div>
+        <div class="calc-wrap">
+          <div class="calc-inputs">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Trade</label>
+                <select id="p-trade" onchange="onTradeChange(true)"></select>
+              </div>
+              <div class="form-group">
+                <label>Vendor</label>
+                <select id="p-vendor"></select>
+                <div class="hint">Not listed? Add them on the Vendors tab.</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Operation</label>
+                <select id="p-op" onchange="onOpChange()"></select>
+              </div>
+              <div class="form-group" id="p-op-new-wrap" style="display:none">
+                <label>New Operation Name</label>
+                <input type="text" id="p-op-new" placeholder="e.g. Tear-off & re-roof">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Vendor Quote ($)</label>
+                <input type="number" id="p-quote" step="0.01" min="0" placeholder="0.00" oninput="liveCalc()">
+              </div>
+              <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" id="p-qty" step="any" min="0" placeholder="e.g. 2100" oninput="liveCalc()">
+              </div>
+              <div class="form-group">
+                <label>Measurement</label>
+                <select id="p-unit" onchange="onUnitChange(); liveCalc()"></select>
+              </div>
+              <div class="form-group" id="p-unit-custom-wrap" style="display:none">
+                <label>Custom Unit</label>
+                <input type="text" id="p-unit-custom" placeholder="unit" oninput="liveCalc()">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Description</label>
+                <textarea id="p-desc" placeholder="Scope details, job reference, quote conditions..."></textarea>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:0 0 160px">
+                <label>Date</label>
+                <input type="date" id="p-date">
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-results">
+            <div class="cr-title">Results</div>
+            <div class="cr-row">
+              <label>Margin %</label>
+              <input type="number" id="p-margin" step="0.5" min="0" max="99" oninput="liveCalc()">
+            </div>
+            <div class="cr-row">
+              <label>Vendor Cost / Unit</label>
+              <div class="cr-val" id="r-unitcost">&mdash;</div>
+            </div>
+            <div class="cr-row big">
+              <label>Retail Price</label>
+              <div class="cr-val" id="r-retail">&mdash;</div>
+            </div>
+            <div class="cr-row big">
+              <label>Price per Unit</label>
+              <div class="cr-val" id="r-perunit">&mdash;</div>
+            </div>
+            <div class="cr-note" id="r-note"></div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px" onclick="savePrice()">&#10003; Save to Price Book &amp; Archive</button>
+            <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="resetPriceForm()">Reset</button>
+            <div class="alert alert-success" id="price-saved" style="display:none;margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ HISTORY ════════ -->
+    <div class="section" id="section-history">
+      <div class="card">
+        <div class="card-title">Price History Archive</div>
+        <div class="filter-bar">
+          <div class="form-group search-group">
+            <label>Search Item</label>
+            <input type="text" id="h-search" placeholder="Item description..." oninput="renderHistory()">
+          </div>
+          <div class="form-group">
+            <label>Trade</label>
+            <select id="h-trade" onchange="renderHistory()"></select>
+          </div>
+          <div class="form-group">
+            <label>Vendor</label>
+            <select id="h-vendor" onchange="renderHistory()"></select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Trade</th>
+                <th>Operation</th>
+                <th>Vendor</th>
+                <th>Unit</th>
+                <th class="num">Unit Cost</th>
+                <th class="num">Quote Total</th>
+                <th class="num">Qty</th>
+                <th class="num">Margin</th>
+                <th class="num">Retail / Unit</th>
+                <th>Description</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ VENDORS ════════ -->
+    <div class="section" id="section-vendors">
+      <div class="card">
+        <div class="card-title" id="vendor-form-title">Add Vendor</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1.5">
+            <label>Company Name *</label>
+            <input type="text" id="v-name" placeholder="ABC Drywall LLC">
+          </div>
+          <div class="form-group">
+            <label>Trade *</label>
+            <select id="v-trade"></select>
+          </div>
+          <div class="form-group">
+            <label>Contact</label>
+            <input type="text" id="v-contact" placeholder="John Smith">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="tel" id="v-phone" placeholder="(555) 555-5555">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="v-email" placeholder="john@example.com">
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <input type="text" id="v-notes" placeholder="Payment terms, lead time...">
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveVendor()"><span id="v-save-label">+ Add Vendor</span></button>
+          <button class="btn btn-secondary" id="v-cancel" style="display:none" onclick="resetVendorForm()">Cancel Edit</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Vendor List</div>
+        <div class="filter-bar">
+          <div class="form-group search-group">
+            <label>Search</label>
+            <input type="text" id="v-search" placeholder="Company, contact..." oninput="renderVendors()">
+          </div>
+          <div class="form-group">
+            <label>Trade</label>
+            <select id="v-filter-trade" onchange="renderVendors()"></select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Trade</th>
+                <th>Contact</th>
+                <th>Phone / Email</th>
+                <th class="num">Prices on File</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="vendors-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ SETTINGS ════════ -->
+    <div class="section" id="section-settings">
+      <div class="card">
+        <div class="card-title">Margin</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:0 0 140px">
+            <label>Default Margin %</label>
+            <input type="number" id="s-margin" step="0.5" min="0" max="99">
+          </div>
+          <div class="form-group">
+            <label>Calculation Method</label>
+            <select id="s-method">
+              <option value="margin">Gross margin &mdash; price = cost &divide; (1 &minus; %)</option>
+              <option value="markup">Markup &mdash; price = cost &times; (1 + %)</option>
+            </select>
+            <div class="hint" id="margin-example"></div>
+          </div>
+        </div>
+        <div class="card-title" style="margin-top:10px;font-size:13px">Per-Trade Margin Overrides <span style="font-weight:400;color:var(--text-muted)">(blank = use default)</span></div>
+        <div class="margin-grid" id="margin-grid"></div>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="saveSettings()">&#10003; Save Margin Settings</button>
+        <span id="settings-saved" style="margin-left:12px;color:var(--success);display:none;font-size:13px">&#10003; Saved!</span>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Trades (<span id="trade-count"></span>)</div>
+        <div id="trade-chips"></div>
+        <div class="form-row" style="margin-top:10px">
+          <div class="form-group" style="flex:0 1 280px">
+            <input type="text" id="new-trade" placeholder="New trade name">
+          </div>
+          <div class="form-group" style="flex:0 0 auto">
+            <button class="btn btn-secondary" onclick="addTrade()">+ Add Trade</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Export to Excel</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Workbook with three sheets: <strong>Price Book</strong> (current prices with margin), <strong>Price History</strong> (full archive), and <strong>Vendors</strong>.</p>
+        <button class="btn btn-success" onclick="exportExcel()">&#128202; Download Excel Workbook</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Backup &amp; Restore</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Data is stored in this browser only. Download a JSON backup regularly.</p>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="backupJSON()">&#128190; Download Backup</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('restore-file').click()">&#128194; Restore from Backup</button>
+          <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreJSON(this)">
+        </div>
+        <div class="alert alert-info" id="restore-alert" style="display:none;margin-top:14px"></div>
+      </div>
+
+      <div class="card" style="border-color:#fecaca">
+        <div class="card-title" style="color:var(--danger)">Danger Zone</div>
+        <div class="alert alert-warning">Permanently deletes all vendors and the entire price archive. Download a backup first.</div>
+        <button class="btn btn-danger" onclick="clearAllData()">&#128465; Clear All Data</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// Storage & State
+// ══════════════════════════════════════════════
+const K = {
+  vendors: 'tradeDB.vendors.v2',
+  prices: 'tradeDB.prices.v2',
+  trades: 'tradeDB.trades.v2',
+  settings: 'tradeDB.settings.v2',
+  operations: 'tradeDB.operations.v2'
+};
+
+const DEFAULT_TRADES = [
+  'Asbestos Abatement','Cabinets & Countertops','Carpentry / Framing','Cleaning','Concrete / Masonry',
+  'Demolition','Drywall','Electrical','Excavation / Grading','Fencing','Flooring','Garage Doors',
+  'Gutters','HVAC','Insulation','Landscaping','Mitigation / Water','Mold Remediation','Painting',
+  'Plumbing','Roofing','Siding','Stucco / Plaster','Tile','Windows & Doors'
+];
+
+function loadJSON(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; }
+  catch { return fallback; }
+}
+function saveJSON(key, v) { localStorage.setItem(key, JSON.stringify(v)); }
+
+let trades = loadJSON(K.trades, DEFAULT_TRADES.slice());
+let vendors = loadJSON(K.vendors, []);
+let prices = loadJSON(K.prices, []);
+let settings = Object.assign({ marginDefault: 30, method: 'margin', tradeMargins: {} }, loadJSON(K.settings, {}));
+let operations = loadJSON(K.operations, {});   // { trade: [operation names] }
+
+// One-time migration from the old directory version (v1)
+(function migrateV1() {
+  if (vendors.length || prices.length) return;
+  const old = loadJSON('tradeDB.partners.v1', null);
+  if (!Array.isArray(old) || !old.length) return;
+  old.forEach(p => {
+    const trade = p.trade === 'Other' && p.tradeCustom ? p.tradeCustom : p.trade;
+    if (trade && !trades.includes(trade)) trades.push(trade);
+    const v = { id: p.id, name: p.company, trade, contact: p.contact || '', phone: p.phone || '', email: p.email || '', notes: p.notes || '' };
+    vendors.push(v);
+    (p.rates || []).forEach((r, i) => {
+      if (!r.desc && !r.price) return;
+      prices.push({ id: p.id + i + 1, vendorId: v.id, trade, item: r.desc || '(unnamed)', unit: r.unit || '', cost: parseFloat(r.price) || 0, total: '', qty: '', date: new Date().toISOString().slice(0, 10), notes: 'Migrated from directory' });
+    });
+  });
+  saveJSON(K.vendors, vendors); saveJSON(K.prices, prices); saveJSON(K.trades, trades);
+})();
+
+let editingVendorId = null;
+let qtyMap = {};   // priceEntryId -> quantity typed in the estimator
+
+// ══════════════════════════════════════════════
+// Helpers
+// ══════════════════════════════════════════════
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtMoney(n, dashIfEmpty) {
+  const v = parseFloat(n);
+  if (isNaN(v)) return dashIfEmpty ? '—' : '';
+  return '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return m + '/' + d + '/' + y;
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function vendorById(id) { return vendors.find(v => v.id === id); }
+// Unique id even for rapid back-to-back saves (Date.now() alone can collide)
+function nextId() {
+  let max = 0;
+  vendors.forEach(v => { if (v.id > max) max = v.id; });
+  prices.forEach(p => { if (p.id > max) max = p.id; });
+  return Math.max(Date.now(), max + 1);
+}
+
+const UNITS = ['SF','SY','LF','EA','HR','DAY','WK','JOB','ROOM','SQ','CY','TON','GAL','LS'];
+
+// Operations for a trade: managed list + anything already in the archive
+function opsFor(trade) {
+  const fromHist = prices.filter(p => p.trade === trade).map(p => p.item);
+  return [...new Set([...(operations[trade] || []), ...fromHist])].sort((a, b) => a.localeCompare(b));
+}
+
+// Margin actually used for an entry: snapshot on the entry, else trade default
+function entryMargin(p) {
+  const m = parseFloat(p.marginPct);
+  return isNaN(m) ? marginFor(p.trade) : m;
+}
+function vendorName(id) { const v = vendorById(id); return v ? v.name : '(deleted vendor)'; }
+
+function marginFor(trade) {
+  const t = settings.tradeMargins[trade];
+  return (t === '' || t == null || isNaN(parseFloat(t))) ? parseFloat(settings.marginDefault) || 0 : parseFloat(t);
+}
+function sellPrice(cost, pct) {
+  cost = parseFloat(cost) || 0;
+  if (settings.method === 'markup') return cost * (1 + pct / 100);
+  return pct >= 100 ? cost : cost / (1 - pct / 100);
+}
+
+// All trades referenced anywhere (settings list + any used by data)
+function allTrades() {
+  return [...new Set([...trades, ...vendors.map(v => v.trade), ...prices.map(p => p.trade)])].filter(Boolean);
+}
+
+// Latest price entry per vendor+item (the "current" price book)
+function latestPrices() {
+  const map = {};
+  prices.forEach(p => {
+    const key = p.trade + '||' + p.item.trim().toLowerCase() + '||' + p.vendorId;
+    const cur = map[key];
+    if (!cur || p.date > cur.date || (p.date === cur.date && p.id > cur.id)) map[key] = p;
+  });
+  return Object.values(map);
+}
+
+function fillTradeSelect(el, opts) {
+  opts = opts || {};
+  const cur = el.value;
+  const list = opts.fromData ? allTrades().sort((a, b) => a.localeCompare(b)) : trades;
+  el.innerHTML = (opts.allLabel ? '<option value="">' + opts.allLabel + '</option>' : '') +
+    list.map(t => '<option' + (t === cur ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
+}
+
+// ══════════════════════════════════════════════
+// Navigation
+// ══════════════════════════════════════════════
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.section === name));
+  if (name === 'book') renderBook();
+  if (name === 'addprice') renderPriceForm();
+  if (name === 'history') renderHistory();
+  if (name === 'vendors') renderVendors();
+  if (name === 'settings') renderSettings();
+}
+
+// ══════════════════════════════════════════════
+// Price Book (estimator)
+// ══════════════════════════════════════════════
+function renderBook() {
+  fillTradeSelect(document.getElementById('book-trade'), { allLabel: 'All Trades', fromData: true });
+  const q = document.getElementById('book-search').value.trim().toLowerCase();
+  const fTrade = document.getElementById('book-trade').value;
+
+  const latest = latestPrices().filter(p => {
+    if (fTrade && p.trade !== fTrade) return false;
+    if (q && !(p.item + ' ' + vendorName(p.vendorId)).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // stats
+  const allLatest = latestPrices();
+  document.getElementById('book-pills').innerHTML =
+    '<span class="stat-pill">' + vendors.length + ' vendor' + (vendors.length === 1 ? '' : 's') + '</span>' +
+    '<span class="stat-pill">' + allLatest.length + ' current price' + (allLatest.length === 1 ? '' : 's') + '</span>' +
+    '<span class="stat-pill">' + prices.length + ' archived entr' + (prices.length === 1 ? 'y' : 'ies') + '</span>' +
+    '<span class="stat-pill">Default margin ' + (parseFloat(settings.marginDefault) || 0) + '% (' + (settings.method === 'markup' ? 'markup' : 'gross margin') + ')</span>';
+
+  document.getElementById('book-empty').style.display = prices.length ? 'none' : '';
+
+  // group by trade, then item, then cost
+  latest.sort((a, b) => a.trade.localeCompare(b.trade) || a.item.localeCompare(b.item, undefined, { sensitivity: 'base' }) || a.cost - b.cost);
+
+  // lowest cost per trade+item for "best" badge
+  const best = {};
+  latest.forEach(p => {
+    const k = p.trade + '||' + p.item.trim().toLowerCase();
+    if (!(k in best) || p.cost < best[k]) best[k] = p.cost;
+  });
+  const multi = {};
+  latest.forEach(p => {
+    const k = p.trade + '||' + p.item.trim().toLowerCase();
+    multi[k] = (multi[k] || 0) + 1;
+  });
+
+  const body = document.getElementById('book-body');
+  if (!latest.length) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="10">' + (prices.length ? 'No matches. Adjust your filters.' : 'Nothing priced yet.') + '</td></tr>';
+    updateTotals();
+    return;
+  }
+
+  let html = '', lastTrade = null;
+  latest.forEach(p => {
+    if (p.trade !== lastTrade) {
+      lastTrade = p.trade;
+      const m = marginFor(p.trade);
+      html += '<tr class="trade-head"><td colspan="10">' + esc(p.trade) +
+        '<span class="margin-note">margin ' + m + '%' + (settings.tradeMargins[p.trade] !== undefined && settings.tradeMargins[p.trade] !== '' ? ' (override)' : '') + '</span></td></tr>';
+    }
+    const m = entryMargin(p);
+    const price = sellPrice(p.cost, m);
+    const k = p.trade + '||' + p.item.trim().toLowerCase();
+    const isBest = multi[k] > 1 && p.cost === best[k];
+    const qty = qtyMap[p.id] || '';
+    const ext = qty ? price * parseFloat(qty) : null;
+    html += '<tr>' +
+      '<td>' + esc(p.item) + (isBest ? ' <span class="badge badge-green">best cost</span>' : '') +
+        (p.notes ? '<div style="font-size:11px;color:var(--text-muted)">' + esc(p.notes) + '</div>' : '') + '</td>' +
+      '<td>' + esc(p.unit) + '</td>' +
+      '<td>' + esc(vendorName(p.vendorId)) + '</td>' +
+      '<td class="num">' + fmtMoney(p.cost) + '</td>' +
+      '<td style="white-space:nowrap">' + fmtDate(p.date) + '</td>' +
+      '<td class="num">' + m + '%</td>' +
+      '<td class="num"><strong>' + fmtMoney(price) + '</strong></td>' +
+      '<td class="num"><input class="qty-input" type="number" step="any" min="0" value="' + esc(qty) + '" oninput="setQty(' + p.id + ', this.value)"></td>' +
+      '<td class="num" id="ext-' + p.id + '">' + (ext != null ? '<strong>' + fmtMoney(ext) + '</strong>' : '—') + '</td>' +
+      '<td style="white-space:nowrap"><a href="javascript:void(0)" onclick="openHistoryFor(\'' + esc(p.trade).replace(/'/g, "\\'") + '\', \'' + esc(p.item).replace(/'/g, "\\'") + '\')">history</a></td>' +
+      '</tr>';
+  });
+  body.innerHTML = html;
+  updateTotals();
+}
+
+function setQty(entryId, val) {
+  if (val === '' || parseFloat(val) <= 0) delete qtyMap[entryId];
+  else qtyMap[entryId] = val;
+  // update just the extended cell + totals (avoid re-render so typing isn't interrupted)
+  const p = prices.find(x => x.id === entryId);
+  const cell = document.getElementById('ext-' + entryId);
+  if (p && cell) {
+    const price = sellPrice(p.cost, entryMargin(p));
+    cell.innerHTML = qtyMap[entryId] ? '<strong>' + fmtMoney(price * parseFloat(qtyMap[entryId])) + '</strong>' : '—';
+  }
+  updateTotals();
+}
+
+function updateTotals() {
+  let cost = 0, price = 0, any = false;
+  Object.keys(qtyMap).forEach(id => {
+    const p = prices.find(x => x.id === +id);
+    if (!p) return;
+    const qty = parseFloat(qtyMap[id]);
+    if (!qty) return;
+    any = true;
+    cost += p.cost * qty;
+    price += sellPrice(p.cost, entryMargin(p)) * qty;
+  });
+  const bar = document.getElementById('totals-bar');
+  bar.classList.toggle('show', any);
+  document.getElementById('tot-cost').textContent = fmtMoney(cost);
+  document.getElementById('tot-price').textContent = fmtMoney(price);
+  document.getElementById('tot-profit').textContent = fmtMoney(price - cost);
+}
+
+function clearQtys() {
+  qtyMap = {};
+  renderBook();
+}
+
+// ══════════════════════════════════════════════
+// Price Calculator (Record Price)
+// ══════════════════════════════════════════════
+function renderPriceForm() {
+  fillTradeSelect(document.getElementById('p-trade'));
+  const u = document.getElementById('p-unit');
+  if (!u.options.length) u.innerHTML = UNITS.map(x => '<option>' + x + '</option>').join('') + '<option value="__custom">Other&hellip;</option>';
+  onTradeChange(true);
+  if (!document.getElementById('p-date').value) document.getElementById('p-date').value = todayISO();
+}
+
+function onTradeChange(keepVendor) {
+  const trade = document.getElementById('p-trade').value;
+  // vendor picker: this trade first, others below
+  const sel = document.getElementById('p-vendor');
+  const cur = sel.value;
+  const inTrade = vendors.filter(v => v.trade === trade);
+  const others = vendors.filter(v => v.trade !== trade);
+  sel.innerHTML =
+    (inTrade.length ? inTrade.map(v => '<option value="' + v.id + '">' + esc(v.name) + '</option>').join('') : '<option value="">— no vendors in this trade —</option>') +
+    (others.length ? '<optgroup label="Other trades">' + others.map(v => '<option value="' + v.id + '">' + esc(v.name) + ' (' + esc(v.trade) + ')</option>').join('') + '</optgroup>' : '');
+  if (keepVendor && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  // operation picker for this trade
+  syncOps(trade);
+  // margin defaults to this trade's margin (still editable per entry)
+  document.getElementById('p-margin').value = marginFor(trade);
+  liveCalc();
+}
+
+function syncOps(trade, selectOp) {
+  const sel = document.getElementById('p-op');
+  const ops = opsFor(trade);
+  sel.innerHTML = ops.map(o => '<option>' + esc(o) + '</option>').join('') +
+    '<option value="__new">&#65291; Add new operation&hellip;</option>';
+  if (selectOp && ops.includes(selectOp)) sel.value = selectOp;
+  else if (!ops.length) sel.value = '__new';
+  onOpChange();
+}
+function onOpChange() {
+  document.getElementById('p-op-new-wrap').style.display = document.getElementById('p-op').value === '__new' ? '' : 'none';
+}
+function onUnitChange() {
+  document.getElementById('p-unit-custom-wrap').style.display = document.getElementById('p-unit').value === '__custom' ? '' : 'none';
+}
+function currentUnit() {
+  const u = document.getElementById('p-unit').value;
+  return u === '__custom' ? document.getElementById('p-unit-custom').value.trim() : u;
+}
+
+function liveCalc() {
+  const quote = parseFloat(document.getElementById('p-quote').value);
+  const qty = parseFloat(document.getElementById('p-qty').value);
+  const m = parseFloat(document.getElementById('p-margin').value) || 0;
+  const unit = currentUnit();
+  const has = !isNaN(quote) && quote > 0;
+  const retail = has ? sellPrice(quote, m) : null;
+  document.getElementById('r-unitcost').textContent = has && qty > 0 ? fmtMoney(quote / qty) + (unit ? '/' + unit : '') : '—';
+  document.getElementById('r-retail').textContent = retail != null ? fmtMoney(retail) : '—';
+  document.getElementById('r-perunit').textContent = retail != null && qty > 0 ? fmtMoney(retail / qty) + (unit ? '/' + unit : '') : '—';
+  document.getElementById('r-note').textContent = retail != null
+    ? 'Profit ' + fmtMoney(retail - quote) + ' at ' + m + '% ' + (settings.method === 'markup' ? 'markup' : 'gross margin')
+    : '';
+}
+
+function savePrice() {
+  const trade = document.getElementById('p-trade').value;
+  const vendorId = +document.getElementById('p-vendor').value;
+  if (!vendorId) { alert('Pick a vendor (add one on the Vendors tab first).'); return; }
+
+  let op = document.getElementById('p-op').value;
+  if (op === '__new') {
+    op = document.getElementById('p-op-new').value.trim();
+    if (!op) { alert('Enter the new operation name.'); return; }
+    operations[trade] = operations[trade] || [];
+    if (!operations[trade].some(x => x.toLowerCase() === op.toLowerCase())) {
+      operations[trade].push(op);
+      saveJSON(K.operations, operations);
+    }
+  }
+  if (!op) { alert('Pick or add an operation.'); return; }
+
+  const quote = parseFloat(document.getElementById('p-quote').value);
+  if (isNaN(quote) || quote <= 0) { alert('Enter the vendor quote amount.'); return; }
+  const qty = parseFloat(document.getElementById('p-qty').value) || '';
+  const unit = currentUnit();
+  const m = parseFloat(document.getElementById('p-margin').value);
+  const cost = qty ? quote / qty : quote;
+
+  prices.push({
+    id: nextId(),
+    vendorId, trade,
+    item: op,
+    unit,
+    cost,
+    total: quote,
+    qty,
+    marginPct: isNaN(m) ? '' : m,
+    date: document.getElementById('p-date').value || todayISO(),
+    notes: document.getElementById('p-desc').value.trim()
+  });
+  saveJSON(K.prices, prices);
+
+  const mm = isNaN(m) ? marginFor(trade) : m;
+  const al = document.getElementById('price-saved');
+  al.innerHTML = '&#10003; Saved. ' + esc(vendorName(vendorId)) + ' &mdash; ' + esc(op) + ' @ ' + fmtMoney(cost) + (unit ? '/' + esc(unit) : '') +
+    ' &rarr; retail <strong>' + fmtMoney(sellPrice(quote, mm)) + '</strong>' +
+    (qty ? ' (' + fmtMoney(sellPrice(cost, mm)) + (unit ? '/' + esc(unit) : '/unit') + ')' : '') + ' at ' + mm + '%.';
+  al.style.display = '';
+  // keep trade & vendor selected for fast multi-entry; clear amounts
+  ['p-quote','p-qty','p-desc','p-op-new'].forEach(id => document.getElementById(id).value = '');
+  syncOps(trade, op);
+  liveCalc();
+}
+
+function resetPriceForm() {
+  ['p-quote','p-qty','p-desc','p-op-new','p-unit-custom'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('p-date').value = todayISO();
+  document.getElementById('price-saved').style.display = 'none';
+  onTradeChange(true);
+}
+
+// ══════════════════════════════════════════════
+// History
+// ══════════════════════════════════════════════
+function renderHistory() {
+  fillTradeSelect(document.getElementById('h-trade'), { allLabel: 'All Trades', fromData: true });
+  const vSel = document.getElementById('h-vendor');
+  const curV = vSel.value;
+  vSel.innerHTML = '<option value="">All Vendors</option>' +
+    vendors.slice().sort((a, b) => a.name.localeCompare(b.name)).map(v => '<option value="' + v.id + '"' + (String(v.id) === curV ? ' selected' : '') + '>' + esc(v.name) + '</option>').join('');
+
+  const q = document.getElementById('h-search').value.trim().toLowerCase();
+  const fTrade = document.getElementById('h-trade').value;
+  const fVendor = vSel.value;
+
+  const rows = prices.filter(p => {
+    if (fTrade && p.trade !== fTrade) return false;
+    if (fVendor && String(p.vendorId) !== fVendor) return false;
+    if (q && !p.item.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+
+  const body = document.getElementById('history-body');
+  if (!rows.length) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="12">' + (prices.length ? 'No matches.' : 'No prices recorded yet.') + '</td></tr>';
+    return;
+  }
+
+  // mark current (latest) entries
+  const latestIds = new Set(latestPrices().map(p => p.id));
+  body.innerHTML = rows.map(p => {
+    const m = entryMargin(p);
+    return '<tr>' +
+      '<td style="white-space:nowrap">' + fmtDate(p.date) + (latestIds.has(p.id) ? ' <span class="badge badge-blue">current</span>' : '') + '</td>' +
+      '<td>' + esc(p.trade) + '</td>' +
+      '<td>' + esc(p.item) + '</td>' +
+      '<td>' + esc(vendorName(p.vendorId)) + '</td>' +
+      '<td>' + esc(p.unit) + '</td>' +
+      '<td class="num"><strong>' + fmtMoney(p.cost) + '</strong></td>' +
+      '<td class="num">' + (p.total !== '' && p.total != null ? fmtMoney(p.total) : '—') + '</td>' +
+      '<td class="num">' + (p.qty !== '' && p.qty != null ? p.qty : '—') + '</td>' +
+      '<td class="num">' + m + '%</td>' +
+      '<td class="num">' + fmtMoney(sellPrice(p.cost, m)) + '</td>' +
+      '<td style="max-width:220px">' + esc(p.notes) + '</td>' +
+      '<td><button class="btn btn-danger btn-sm" title="Delete this entry" onclick="deletePrice(' + p.id + ')">&#128465;</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function openHistoryFor(trade, item) {
+  showSection('history');
+  document.getElementById('h-trade').value = trade;
+  document.getElementById('h-vendor').value = '';
+  document.getElementById('h-search').value = item;
+  renderHistory();
+}
+
+function deletePrice(id) {
+  const p = prices.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm('Delete this archived price?\n\n' + fmtDate(p.date) + ' — ' + vendorName(p.vendorId) + ' — ' + p.item + ' @ ' + fmtMoney(p.cost))) return;
+  prices = prices.filter(x => x.id !== id);
+  saveJSON(K.prices, prices);
+  renderHistory();
+}
+
+// ══════════════════════════════════════════════
+// Vendors
+// ══════════════════════════════════════════════
+function renderVendors() {
+  fillTradeSelect(document.getElementById('v-trade'));
+  fillTradeSelect(document.getElementById('v-filter-trade'), { allLabel: 'All Trades', fromData: true });
+
+  const q = document.getElementById('v-search').value.trim().toLowerCase();
+  const fTrade = document.getElementById('v-filter-trade').value;
+
+  const rows = vendors.filter(v => {
+    if (fTrade && v.trade !== fTrade) return false;
+    if (q && !(v.name + ' ' + (v.contact || '') + ' ' + (v.notes || '')).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => a.trade.localeCompare(b.trade) || a.name.localeCompare(b.name));
+
+  const body = document.getElementById('vendors-body');
+  if (!rows.length) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="6">' + (vendors.length ? 'No matches.' : 'No vendors yet. Add your first one above.') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(v => {
+    const n = prices.filter(p => p.vendorId === v.id).length;
+    return '<tr>' +
+      '<td><strong>' + esc(v.name) + '</strong>' + (v.notes ? '<div style="font-size:12px;color:var(--text-muted)">' + esc(v.notes) + '</div>' : '') + '</td>' +
+      '<td><span class="badge badge-blue">' + esc(v.trade) + '</span></td>' +
+      '<td>' + esc(v.contact) + '</td>' +
+      '<td>' + (v.phone ? '<a href="tel:' + esc(v.phone.replace(/[^\d+]/g, '')) + '">' + esc(v.phone) + '</a>' : '') +
+        (v.email ? '<div style="font-size:12px"><a href="mailto:' + esc(v.email) + '">' + esc(v.email) + '</a></div>' : '') + '</td>' +
+      '<td class="num">' + (n ? '<a href="javascript:void(0)" onclick="historyForVendor(' + v.id + ')">' + n + '</a>' : '0') + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="editVendor(' + v.id + ')">&#9998; Edit</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteVendor(' + v.id + ')">&#128465; Remove</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function historyForVendor(id) {
+  showSection('history');
+  document.getElementById('h-trade').value = '';
+  document.getElementById('h-search').value = '';
+  document.getElementById('h-vendor').value = String(id);
+  renderHistory();
+}
+
+function saveVendor() {
+  const name = document.getElementById('v-name').value.trim();
+  if (!name) { alert('Company name is required.'); return; }
+  const rec = {
+    id: editingVendorId !== null ? editingVendorId : nextId(),
+    name,
+    trade: document.getElementById('v-trade').value,
+    contact: document.getElementById('v-contact').value.trim(),
+    phone: document.getElementById('v-phone').value.trim(),
+    email: document.getElementById('v-email').value.trim(),
+    notes: document.getElementById('v-notes').value.trim()
+  };
+  if (editingVendorId !== null) {
+    const i = vendors.findIndex(v => v.id === editingVendorId);
+    if (i >= 0) vendors[i] = rec; else vendors.push(rec);
+  } else {
+    vendors.push(rec);
+  }
+  saveJSON(K.vendors, vendors);
+  resetVendorForm();
+  renderVendors();
+}
+
+function editVendor(id) {
+  const v = vendorById(id);
+  if (!v) return;
+  editingVendorId = id;
+  document.getElementById('vendor-form-title').textContent = 'Edit: ' + v.name;
+  document.getElementById('v-save-label').textContent = '✓ Update Vendor';
+  document.getElementById('v-cancel').style.display = '';
+  document.getElementById('v-name').value = v.name;
+  fillTradeSelect(document.getElementById('v-trade'));
+  document.getElementById('v-trade').value = trades.includes(v.trade) ? v.trade : trades[0];
+  document.getElementById('v-contact').value = v.contact || '';
+  document.getElementById('v-phone').value = v.phone || '';
+  document.getElementById('v-email').value = v.email || '';
+  document.getElementById('v-notes').value = v.notes || '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetVendorForm() {
+  editingVendorId = null;
+  document.getElementById('vendor-form-title').textContent = 'Add Vendor';
+  document.getElementById('v-save-label').textContent = '+ Add Vendor';
+  document.getElementById('v-cancel').style.display = 'none';
+  ['v-name','v-contact','v-phone','v-email','v-notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteVendor(id) {
+  const v = vendorById(id);
+  if (!v) return;
+  const n = prices.filter(p => p.vendorId === id).length;
+  let keepHistory = false;
+  if (n) {
+    keepHistory = confirm('"' + v.name + '" has ' + n + ' price entr' + (n === 1 ? 'y' : 'ies') + ' in the archive.\n\nOK = remove vendor but KEEP their price history\nCancel = choose next option');
+    if (!keepHistory && !confirm('Remove "' + v.name + '" AND permanently delete their ' + n + ' archived price(s)?')) return;
+  } else if (!confirm('Remove vendor "' + v.name + '"?')) {
+    return;
+  }
+  vendors = vendors.filter(x => x.id !== id);
+  if (!keepHistory) prices = prices.filter(p => p.vendorId !== id);
+  saveJSON(K.vendors, vendors);
+  saveJSON(K.prices, prices);
+  renderVendors();
+}
+
+// ══════════════════════════════════════════════
+// Settings
+// ══════════════════════════════════════════════
+function renderSettings() {
+  document.getElementById('s-margin').value = settings.marginDefault;
+  document.getElementById('s-method').value = settings.method;
+  updateMarginExample();
+  document.getElementById('s-margin').oninput = updateMarginExample;
+  document.getElementById('s-method').onchange = updateMarginExample;
+
+  // per-trade overrides
+  document.getElementById('margin-grid').innerHTML = trades.map(t =>
+    '<div class="mg-row"><label>' + esc(t) + '</label><input type="number" step="0.5" min="0" max="99" placeholder="' + (parseFloat(settings.marginDefault) || 0) + '" data-trade="' + esc(t) + '" value="' + (settings.tradeMargins[t] != null ? esc(settings.tradeMargins[t]) : '') + '"><span style="color:var(--text-muted)">%</span></div>'
+  ).join('');
+
+  // trade chips
+  document.getElementById('trade-count').textContent = trades.length;
+  document.getElementById('trade-chips').innerHTML = trades.map((t, i) =>
+    '<span class="trade-chip">' + esc(t) + '<button title="Remove trade" onclick="removeTrade(' + i + ')">&times;</button></span>'
+  ).join('');
+}
+
+function updateMarginExample() {
+  const m = parseFloat(document.getElementById('s-margin').value) || 0;
+  const method = document.getElementById('s-method').value;
+  const p = method === 'markup' ? 100 * (1 + m / 100) : (m >= 100 ? 100 : 100 / (1 - m / 100));
+  document.getElementById('margin-example').textContent =
+    'Example: $100 vendor cost → ' + fmtMoney(p) + ' your price at ' + m + '%';
+}
+
+function saveSettings() {
+  settings.marginDefault = parseFloat(document.getElementById('s-margin').value) || 0;
+  settings.method = document.getElementById('s-method').value;
+  settings.tradeMargins = {};
+  document.querySelectorAll('#margin-grid input').forEach(inp => {
+    if (inp.value !== '' && !isNaN(parseFloat(inp.value))) settings.tradeMargins[inp.dataset.trade] = parseFloat(inp.value);
+  });
+  saveJSON(K.settings, settings);
+  const el = document.getElementById('settings-saved');
+  el.style.display = '';
+  setTimeout(() => el.style.display = 'none', 2000);
+}
+
+function addTrade() {
+  const t = document.getElementById('new-trade').value.trim();
+  if (!t) return;
+  if (trades.some(x => x.toLowerCase() === t.toLowerCase())) { alert('That trade already exists.'); return; }
+  trades.push(t);
+  trades.sort((a, b) => a.localeCompare(b));
+  saveJSON(K.trades, trades);
+  document.getElementById('new-trade').value = '';
+  renderSettings();
+}
+
+function removeTrade(i) {
+  const t = trades[i];
+  const used = vendors.some(v => v.trade === t) || prices.some(p => p.trade === t);
+  if (!confirm('Remove trade "' + t + '" from the list?' + (used ? '\n\nExisting vendors/prices under this trade are kept and still shown — it just won’t appear for new entries.' : ''))) return;
+  trades.splice(i, 1);
+  delete settings.tradeMargins[t];
+  saveJSON(K.trades, trades);
+  saveJSON(K.settings, settings);
+  renderSettings();
+}
+
+// ══════════════════════════════════════════════
+// Export & Backup
+// ══════════════════════════════════════════════
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  const latest = latestPrices().sort((a, b) => a.trade.localeCompare(b.trade) || a.item.localeCompare(b.item) || a.cost - b.cost);
+  const bookRows = latest.map(p => {
+    const m = entryMargin(p);
+    return {
+      'Trade': p.trade, 'Operation': p.item, 'Unit': p.unit,
+      'Vendor': vendorName(p.vendorId),
+      'Vendor Cost': p.cost,
+      'Margin %': m,
+      'Retail Price': +sellPrice(p.cost, m).toFixed(2),
+      'As Of': fmtDate(p.date)
+    };
+  });
+  const ws1 = XLSX.utils.json_to_sheet(bookRows.length ? bookRows : [{ 'Trade': '', 'Item': '' }]);
+  ws1['!cols'] = [{wch:20},{wch:38},{wch:8},{wch:26},{wch:12},{wch:9},{wch:11},{wch:11}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Price Book');
+
+  const histRows = prices.slice().sort((a, b) => a.trade.localeCompare(b.trade) || a.item.localeCompare(b.item) || b.date.localeCompare(a.date))
+    .map(p => ({
+      'Date': fmtDate(p.date), 'Trade': p.trade, 'Operation': p.item, 'Vendor': vendorName(p.vendorId),
+      'Unit': p.unit, 'Unit Cost': p.cost,
+      'Quote Total': p.total === '' ? '' : p.total, 'Qty': p.qty === '' ? '' : p.qty,
+      'Margin %': entryMargin(p),
+      'Retail / Unit': +sellPrice(p.cost, entryMargin(p)).toFixed(2),
+      'Description': p.notes
+    }));
+  const ws2 = XLSX.utils.json_to_sheet(histRows.length ? histRows : [{ 'Date': '', 'Trade': '' }]);
+  ws2['!cols'] = [{wch:11},{wch:20},{wch:38},{wch:26},{wch:8},{wch:10},{wch:12},{wch:9},{wch:9},{wch:12},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Price History');
+
+  const venRows = vendors.slice().sort((a, b) => a.trade.localeCompare(b.trade) || a.name.localeCompare(b.name))
+    .map(v => ({ 'Trade': v.trade, 'Company': v.name, 'Contact': v.contact, 'Phone': v.phone, 'Email': v.email, 'Notes': v.notes }));
+  const ws3 = XLSX.utils.json_to_sheet(venRows.length ? venRows : [{ 'Trade': '', 'Company': '' }]);
+  ws3['!cols'] = [{wch:20},{wch:26},{wch:18},{wch:15},{wch:26},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Vendors');
+
+  XLSX.writeFile(wb, 'Trade-Pricing-' + todayISO() + '.xlsx');
+}
+
+function backupJSON() {
+  const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), version: 2, trades, vendors, prices, settings, operations }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'trade-pricing-backup-' + todayISO() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function restoreJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data.vendors) || !Array.isArray(data.prices)) throw new Error('Not a valid backup file');
+      if ((vendors.length || prices.length) && !confirm('Replace current data (' + vendors.length + ' vendors, ' + prices.length + ' prices) with this backup (' + data.vendors.length + ' vendors, ' + data.prices.length + ' prices)?')) return;
+      vendors = data.vendors;
+      prices = data.prices;
+      if (Array.isArray(data.trades) && data.trades.length) trades = data.trades;
+      if (data.settings) settings = Object.assign({ marginDefault: 30, method: 'margin', tradeMargins: {} }, data.settings);
+      if (data.operations && typeof data.operations === 'object') operations = data.operations;
+      saveJSON(K.vendors, vendors); saveJSON(K.prices, prices); saveJSON(K.trades, trades); saveJSON(K.settings, settings); saveJSON(K.operations, operations);
+      qtyMap = {};
+      renderBook();
+      const al = document.getElementById('restore-alert');
+      al.textContent = '✓ Restored ' + vendors.length + ' vendor(s) and ' + prices.length + ' price entr' + (prices.length === 1 ? 'y' : 'ies') + '.';
+      al.style.display = '';
+    } catch (e) {
+      alert('Could not read backup: ' + e.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (!confirm('Delete ALL vendors and the ENTIRE price history archive? This cannot be undone.')) return;
+  if (!confirm('Are you sure? Consider downloading a backup first.')) return;
+  vendors = []; prices = []; qtyMap = {}; operations = {};
+  trades = DEFAULT_TRADES.slice();
+  settings = { marginDefault: 30, method: 'margin', tradeMargins: {} };
+  Object.values(K).forEach(k => localStorage.removeItem(k));
+  renderBook();
+  renderSettings();
+}
+
+// ══════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════
+renderBook();
+renderPriceForm();
+</script>
+</body>
+</html>
