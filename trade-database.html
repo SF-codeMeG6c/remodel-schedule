@@ -215,6 +215,13 @@
             </div>
             <div class="form-row">
               <div class="form-group">
+                <label>Customer / Job</label>
+                <select id="p-customer"></select>
+                <div class="hint">Add customers under Margin &amp; Settings.</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
                 <label>Operation</label>
                 <select id="p-op" onchange="onOpChange()"></select>
               </div>
@@ -308,6 +315,7 @@
                 <th>Trade</th>
                 <th>Operation</th>
                 <th>Vendor</th>
+                <th>Job</th>
                 <th>Unit</th>
                 <th class="num">Unit Cost</th>
                 <th class="num">Quote Total</th>
@@ -430,6 +438,37 @@
       </div>
 
       <div class="card">
+        <div class="card-title">Customers / Jobs (<span id="customer-count"></span>)</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Jobs you can tag prices with on the Record Price tab. Deleting a customer keeps the job name on already-archived prices.</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Customer / Job Name</label>
+            <input type="text" id="c-name" placeholder="Smith Residence">
+          </div>
+          <div class="form-group" style="flex:2">
+            <label>Address</label>
+            <input type="text" id="c-address" placeholder="3535 Villa Terrace, San Diego, CA">
+          </div>
+          <div class="form-group" style="flex:0 0 auto;justify-content:flex-end">
+            <button class="btn btn-primary" onclick="addCustomer()">+ Add Customer</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer / Job</th>
+                <th>Address</th>
+                <th class="num">Prices Tagged</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="customers-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-title">Export to Excel</div>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Workbook with three sheets: <strong>Price Book</strong> (current prices with margin), <strong>Price History</strong> (full archive), and <strong>Vendors</strong>.</p>
         <button class="btn btn-success" onclick="exportExcel()">&#128202; Download Excel Workbook</button>
@@ -464,7 +503,8 @@ const K = {
   prices: 'tradeDB.prices.v2',
   trades: 'tradeDB.trades.v2',
   settings: 'tradeDB.settings.v2',
-  operations: 'tradeDB.operations.v2'
+  operations: 'tradeDB.operations.v2',
+  customers: 'tradeDB.customers.v2'
 };
 
 const DEFAULT_TRADES = [
@@ -485,6 +525,7 @@ let vendors = loadJSON(K.vendors, []);
 let prices = loadJSON(K.prices, []);
 let settings = Object.assign({ marginDefault: 30, method: 'margin', tradeMargins: {} }, loadJSON(K.settings, {}));
 let operations = loadJSON(K.operations, {});   // { trade: [operation names] }
+let customers = loadJSON(K.customers, []);     // [{ id, name, address }]
 
 // One-time migration from the old directory version (v1)
 (function migrateV1() {
@@ -533,6 +574,7 @@ function nextId() {
   let max = 0;
   vendors.forEach(v => { if (v.id > max) max = v.id; });
   prices.forEach(p => { if (p.id > max) max = p.id; });
+  customers.forEach(c => { if (c.id > max) max = c.id; });
   return Math.max(Date.now(), max + 1);
 }
 
@@ -661,7 +703,7 @@ function renderBook() {
     const ext = qty ? price * parseFloat(qty) : null;
     html += '<tr>' +
       '<td>' + esc(p.item) + (isBest ? ' <span class="badge badge-green">best cost</span>' : '') +
-        (p.notes ? '<div style="font-size:11px;color:var(--text-muted)">' + esc(p.notes) + '</div>' : '') + '</td>' +
+        ((p.jobName || p.notes) ? '<div style="font-size:11px;color:var(--text-muted)">' + esc([p.jobName, p.notes].filter(Boolean).join(' • ')) + '</div>' : '') + '</td>' +
       '<td>' + esc(p.unit) + '</td>' +
       '<td>' + esc(vendorName(p.vendorId)) + '</td>' +
       '<td class="num">' + fmtMoney(p.cost) + '</td>' +
@@ -720,8 +762,18 @@ function renderPriceForm() {
   fillTradeSelect(document.getElementById('p-trade'));
   const u = document.getElementById('p-unit');
   if (!u.options.length) u.innerHTML = UNITS.map(x => '<option>' + x + '</option>').join('') + '<option value="__custom">Other&hellip;</option>';
+  syncCustomerPicker();
   onTradeChange(true);
   if (!document.getElementById('p-date').value) document.getElementById('p-date').value = todayISO();
+}
+
+function syncCustomerPicker() {
+  const sel = document.getElementById('p-customer');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— No job / general pricing —</option>' +
+    customers.slice().sort((a, b) => a.name.localeCompare(b.name))
+      .map(c => '<option value="' + c.id + '">' + esc(c.name) + (c.address ? ' — ' + esc(c.address) : '') + '</option>').join('');
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
 }
 
 function onTradeChange(keepVendor) {
@@ -801,6 +853,9 @@ function savePrice() {
   const m = parseFloat(document.getElementById('p-margin').value);
   const cost = qty ? quote / qty : quote;
 
+  // snapshot the job on the entry so the archive survives customer deletion
+  const cust = customers.find(c => c.id === +document.getElementById('p-customer').value);
+
   prices.push({
     id: nextId(),
     vendorId, trade,
@@ -810,6 +865,9 @@ function savePrice() {
     total: quote,
     qty,
     marginPct: isNaN(m) ? '' : m,
+    customerId: cust ? cust.id : '',
+    jobName: cust ? cust.name : '',
+    jobAddress: cust ? cust.address : '',
     date: document.getElementById('p-date').value || todayISO(),
     notes: document.getElementById('p-desc').value.trim()
   });
@@ -819,7 +877,8 @@ function savePrice() {
   const al = document.getElementById('price-saved');
   al.innerHTML = '&#10003; Saved. ' + esc(vendorName(vendorId)) + ' &mdash; ' + esc(op) + ' @ ' + fmtMoney(cost) + (unit ? '/' + esc(unit) : '') +
     ' &rarr; retail <strong>' + fmtMoney(sellPrice(quote, mm)) + '</strong>' +
-    (qty ? ' (' + fmtMoney(sellPrice(cost, mm)) + (unit ? '/' + esc(unit) : '/unit') + ')' : '') + ' at ' + mm + '%.';
+    (qty ? ' (' + fmtMoney(sellPrice(cost, mm)) + (unit ? '/' + esc(unit) : '/unit') + ')' : '') + ' at ' + mm + '%' +
+    (cust ? ' &mdash; job: ' + esc(cust.name) : '') + '.';
   al.style.display = '';
   // keep trade & vendor selected for fast multi-entry; clear amounts
   ['p-quote','p-qty','p-desc','p-op-new'].forEach(id => document.getElementById(id).value = '');
@@ -851,13 +910,13 @@ function renderHistory() {
   const rows = prices.filter(p => {
     if (fTrade && p.trade !== fTrade) return false;
     if (fVendor && String(p.vendorId) !== fVendor) return false;
-    if (q && !p.item.toLowerCase().includes(q)) return false;
+    if (q && !(p.item + ' ' + (p.jobName || '')).toLowerCase().includes(q)) return false;
     return true;
   }).sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
 
   const body = document.getElementById('history-body');
   if (!rows.length) {
-    body.innerHTML = '<tr class="empty-row"><td colspan="12">' + (prices.length ? 'No matches.' : 'No prices recorded yet.') + '</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="13">' + (prices.length ? 'No matches.' : 'No prices recorded yet.') + '</td></tr>';
     return;
   }
 
@@ -870,6 +929,7 @@ function renderHistory() {
       '<td>' + esc(p.trade) + '</td>' +
       '<td>' + esc(p.item) + '</td>' +
       '<td>' + esc(vendorName(p.vendorId)) + '</td>' +
+      '<td>' + (p.jobName ? esc(p.jobName) + (p.jobAddress ? '<div style="font-size:11px;color:var(--text-muted)">' + esc(p.jobAddress) + '</div>' : '') : '<span style="color:var(--text-muted)">—</span>') + '</td>' +
       '<td>' + esc(p.unit) + '</td>' +
       '<td class="num"><strong>' + fmtMoney(p.cost) + '</strong></td>' +
       '<td class="num">' + (p.total !== '' && p.total != null ? fmtMoney(p.total) : '—') + '</td>' +
@@ -1029,6 +1089,48 @@ function renderSettings() {
   document.getElementById('trade-chips').innerHTML = trades.map((t, i) =>
     '<span class="trade-chip">' + esc(t) + '<button title="Remove trade" onclick="removeTrade(' + i + ')">&times;</button></span>'
   ).join('');
+
+  renderCustomers();
+}
+
+function renderCustomers() {
+  document.getElementById('customer-count').textContent = customers.length;
+  const body = document.getElementById('customers-body');
+  if (!customers.length) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="4">No customers yet. Add one above to tag prices with a job.</td></tr>';
+    return;
+  }
+  body.innerHTML = customers.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => {
+    const n = prices.filter(p => p.customerId === c.id).length;
+    return '<tr>' +
+      '<td><strong>' + esc(c.name) + '</strong></td>' +
+      '<td>' + esc(c.address) + '</td>' +
+      '<td class="num">' + n + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn btn-danger btn-sm" onclick="deleteCustomer(' + c.id + ')">&#128465; Delete</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function addCustomer() {
+  const name = document.getElementById('c-name').value.trim();
+  if (!name) { alert('Enter the customer / job name.'); return; }
+  customers.push({ id: nextId(), name, address: document.getElementById('c-address').value.trim() });
+  saveJSON(K.customers, customers);
+  document.getElementById('c-name').value = '';
+  document.getElementById('c-address').value = '';
+  renderCustomers();
+  syncCustomerPicker();
+}
+
+function deleteCustomer(id) {
+  const c = customers.find(x => x.id === id);
+  if (!c) return;
+  const n = prices.filter(p => p.customerId === id).length;
+  if (!confirm('Delete customer "' + c.name + '"?' + (n ? '\n\n' + n + ' archived price(s) are tagged with this job — they keep the job name, it just won’t be selectable for new prices.' : ''))) return;
+  customers = customers.filter(x => x.id !== id);
+  saveJSON(K.customers, customers);
+  renderCustomers();
+  syncCustomerPicker();
 }
 
 function updateMarginExample() {
@@ -1099,6 +1201,7 @@ function exportExcel() {
   const histRows = prices.slice().sort((a, b) => a.trade.localeCompare(b.trade) || a.item.localeCompare(b.item) || b.date.localeCompare(a.date))
     .map(p => ({
       'Date': fmtDate(p.date), 'Trade': p.trade, 'Operation': p.item, 'Vendor': vendorName(p.vendorId),
+      'Job': p.jobName || '', 'Job Address': p.jobAddress || '',
       'Unit': p.unit, 'Unit Cost': p.cost,
       'Quote Total': p.total === '' ? '' : p.total, 'Qty': p.qty === '' ? '' : p.qty,
       'Margin %': entryMargin(p),
@@ -1106,7 +1209,7 @@ function exportExcel() {
       'Description': p.notes
     }));
   const ws2 = XLSX.utils.json_to_sheet(histRows.length ? histRows : [{ 'Date': '', 'Trade': '' }]);
-  ws2['!cols'] = [{wch:11},{wch:20},{wch:38},{wch:26},{wch:8},{wch:10},{wch:12},{wch:9},{wch:9},{wch:12},{wch:40}];
+  ws2['!cols'] = [{wch:11},{wch:20},{wch:38},{wch:26},{wch:22},{wch:30},{wch:8},{wch:10},{wch:12},{wch:9},{wch:9},{wch:12},{wch:40}];
   XLSX.utils.book_append_sheet(wb, ws2, 'Price History');
 
   const venRows = vendors.slice().sort((a, b) => a.trade.localeCompare(b.trade) || a.name.localeCompare(b.name))
@@ -1119,7 +1222,7 @@ function exportExcel() {
 }
 
 function backupJSON() {
-  const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), version: 2, trades, vendors, prices, settings, operations }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), version: 2, trades, vendors, prices, settings, operations, customers }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'trade-pricing-backup-' + todayISO() + '.json';
@@ -1141,7 +1244,8 @@ function restoreJSON(input) {
       if (Array.isArray(data.trades) && data.trades.length) trades = data.trades;
       if (data.settings) settings = Object.assign({ marginDefault: 30, method: 'margin', tradeMargins: {} }, data.settings);
       if (data.operations && typeof data.operations === 'object') operations = data.operations;
-      saveJSON(K.vendors, vendors); saveJSON(K.prices, prices); saveJSON(K.trades, trades); saveJSON(K.settings, settings); saveJSON(K.operations, operations);
+      if (Array.isArray(data.customers)) customers = data.customers;
+      saveJSON(K.vendors, vendors); saveJSON(K.prices, prices); saveJSON(K.trades, trades); saveJSON(K.settings, settings); saveJSON(K.operations, operations); saveJSON(K.customers, customers);
       qtyMap = {};
       renderBook();
       const al = document.getElementById('restore-alert');
@@ -1158,7 +1262,7 @@ function restoreJSON(input) {
 function clearAllData() {
   if (!confirm('Delete ALL vendors and the ENTIRE price history archive? This cannot be undone.')) return;
   if (!confirm('Are you sure? Consider downloading a backup first.')) return;
-  vendors = []; prices = []; qtyMap = {}; operations = {};
+  vendors = []; prices = []; qtyMap = {}; operations = {}; customers = [];
   trades = DEFAULT_TRADES.slice();
   settings = { marginDefault: 30, method: 'margin', tradeMargins: {} };
   Object.values(K).forEach(k => localStorage.removeItem(k));
